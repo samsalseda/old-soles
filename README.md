@@ -2,4 +2,4 @@
 
 preprocess: load in dataset, consider resolution reduction/trimming, consider data augmentation, implement StyleMe
 
-decoder: 
+decoder: THIS IS A TEST
