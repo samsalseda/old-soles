@@ -51,7 +51,7 @@ class Discriminator(tf.keras.layers.Layer):
             ]
         )
 
-        self.disc4 = tf.keras.layers.Sequential(
+        self.disc4 = tf.keras.Sequential(
             [
                 tf.keras.layers.Conv2D(
                     filters=self.hidden_size * 8, kernel_size=4, strides=2, padding=1
