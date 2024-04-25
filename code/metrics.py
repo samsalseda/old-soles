@@ -1,16 +1,19 @@
 import tensorflow as tf
 
-#https://www.tensorflow.org/api_docs/python/tf/image/psnr
+
+# https://www.tensorflow.org/api_docs/python/tf/image/psnr
 def SSIM(generated_image, real_image):
     return tf.image.ssim(generated_image, real_image, max_val=255)
 
-#https://www.tensorflow.org/api_docs/python/tf/image/ssim
+
+# https://www.tensorflow.org/api_docs/python/tf/image/ssim
 def PSNR(generated_image, real_image):
     return tf.image.psnr(generated_image, real_image, max_val=255)
 
-#Found this implementation of FID
-#https://wandb.ai/ayush-thakur/gan-evaluation/reports/How-to-Evaluate-GANs-using-Frechet-Inception-Distance-FID---Vmlldzo0MTAxOTI
-#https://github.com/tsc2017/Frechet-Inception-Distance
+
+# Found this implementation of FID
+# https://wandb.ai/ayush-thakur/gan-evaluation/reports/How-to-Evaluate-GANs-using-Frechet-Inception-Distance-FID---Vmlldzo0MTAxOTI
+# https://github.com/tsc2017/Frechet-Inception-Distance
 
 # inception_model = tf.keras.applications.InceptionV3(include_top=False, weights="imagenet", pooling='avg')
 
@@ -42,6 +45,3 @@ def PSNR(generated_image, real_image):
 #      # calculate score
 #      fid = ssdiff + np.trace(sigma1 + sigma2 - 2.0 * covmean)
 #      return fid
-
-
-
