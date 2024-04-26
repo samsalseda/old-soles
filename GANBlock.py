@@ -1,5 +1,5 @@
 import tensorflow as tf
-
+import Resnet
 
 class GANBlock(tf.keras.layers.Layer):
     def __init__(self):
@@ -78,8 +78,35 @@ class Discriminator(tf.keras.layers.Layer):
 
 class Generator(tf.keras.layers.Layer):
 
-    def __init__(self, input_size):
-        pass
+    def __init__(self, input_size, resnet = True, block_size = 8):
+
+        blocks = []
+        if resnet:
+            for i in range(block_size):
+                block = Resnet.ResidualBlock(256)
+                blocks.append(block)
+
+        else:
+            for i in range(block_size):
+                block = tf.keras.layers.Dense(256)
+                blocks.append(block)
+        
+        self.middle = tf.keras.Sequential(*blocks)
+
+        self.generator = tf.keras.Sequential(
+            [
+                ReflectionPad2D.ReflectionPad2d(),
+                tf.keras.layers.Conv2D(
+                    filters=self.input_size, kernel_size=3, strides=(2,2), padding='VALID'
+                ),
+                tf.keras.layers.ReLU(),
+                tf.keras.layers.SpectralNormalization(),
+                tf.keras.layers.Groupnormalization(groups = -1)
+
+                #May need to add more layers here
+            ]
+        )
+
 
     def call(self, inputs):
         pass

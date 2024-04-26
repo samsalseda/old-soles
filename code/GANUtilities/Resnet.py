@@ -8,12 +8,17 @@ class ResidualBlock(tf.keras.layers.Layer):
         self.conv_block = tf.keras.Sequential(
             [
                 ReflectionPad2D.ReflectionPad2d(),
-                tf.keras.layers.Conv2D(
+                tf.keras.layers.SpectralNormalization(tf.keras.layers.Conv2D(
                     filters=self.input_size, kernel_size=3, strides=(2,2), padding='VALID'
-                ),
+                )),
+                tf.keras.layers.Groupnormalization(groups = -1),
                 tf.keras.layers.ReLU(),
-                tf.keras.layers.SpectralNormalization(),
-                tf.keras.layers.Groupnormalization(groups = -1)
+                
+                ReflectionPad2D.ReflectionPad2d(),
+                tf.keras.layers.SpectralNormalization(tf.keras.layers.Conv2D(
+                    filters=self.input_size, kernel_size=3, strides=(2,2), padding='VALID'
+                )),
+                tf.keras.layers.Groupnormalization(groups = -1),
 
                 #May need to add more layers here
             ]
