@@ -23,31 +23,28 @@ class Discriminator(tf.keras.layers.Layer):
         leaky_relu_layer = tf.keras.layers.LeakyReLU(negative_slope=0.5)
         self.disc1 = tf.keras.Sequential(
             [
-                tf.keras.layers.Conv2D(
+                tf.keras.layers.SpectralNormalization(tf.keras.layers.Conv2D(
                     filters=self.hidden_size, kernel_size=4, strides=(2,2), padding='SAME'
-                ),
-                leaky_relu_layer,
-                tf.keras.layers.SpectralNormalization(),
+                )),
+                leaky_relu_layer
             ]
         )
 
         self.disc2 = tf.keras.Sequential(
             [
-                tf.keras.layers.Conv2D(
+                tf.keras.layers.SpectralNormalization(tf.keras.layers.Conv2D(
                     filters=self.hidden_size * 2, kernel_size=4, strides=(2,2), padding='SAME'
-                ),
-                leaky_relu_layer,
-                tf.keras.layers.SpectralNormalization(),
+                )),
+                leaky_relu_layer
             ]
         )
 
         self.disc3 = tf.keras.Sequential(
             [
-                tf.keras.layers.Conv2D(
-                    filters=self.hidden_size * 4, kernel_size=4, strides=(2,2), padding='SAME'
-                ),
-                leaky_relu_layer,
-                tf.keras.layers.SpectralNormalization(),
+                tf.keras.layers.SpectralNormalization(tf.keras.layers.Conv2D(
+                    filters=self.hidden_size, kernel_size=4, strides=(2,2), padding='SAME'
+                )),
+                leaky_relu_layer
             ]
         )
 
@@ -93,20 +90,45 @@ class Generator(tf.keras.layers.Layer):
         
         self.middle = tf.keras.Sequential(*blocks)
 
-        self.generator = tf.keras.Sequential(
+        self.encoder = tf.keras.Sequential(
             [
                 ReflectionPad2D.ReflectionPad2d(),
-                tf.keras.layers.Conv2D(
-                    filters=self.input_size, kernel_size=3, strides=(2,2), padding='VALID'
-                ),
+                tf.keras.layers.SpectralNormalization(tf.keras.layers.Conv2D(
+                    filters=64, kernel_size=3, strides=(2,2), padding='VALID'
+                )),
+                tf.keras.layers.GroupNormalization(groups = -1),
                 tf.keras.layers.ReLU(),
-                tf.keras.layers.SpectralNormalization(),
-                tf.keras.layers.Groupnormalization(groups = -1)
+                
+                ReflectionPad2D.ReflectionPad2d(),
+                tf.keras.layers.SpectralNormalization(tf.keras.layers.Conv2D(
+                    filters=128, kernel_size=3, strides=(2,2), padding='VALID'
+                )),
+                tf.keras.layers.GroupNormalization(groups = -1),
 
-                #May need to add more layers here
+                ReflectionPad2D.ReflectionPad2d(),
+                tf.keras.layers.SpectralNormalization(tf.keras.layers.Conv2D(
+                    filters=256, kernel_size=3, strides=(2,2), padding='VALID'
+                )),
+                tf.keras.layers.GroupNormalization(groups = -1),
             ]
+        )
+
+        self.decoder = tf.keras.Sequential(
+            tf.keras.layers.Conv2DTranspose(filters=128, kernel_size=3, strides=(2,2), padding='VALID'),
+            tf.keras.layers.GroupNormalization(groups=-1),
+            tf.keras.layers.ReLU(),
+
+            tf.keras.layers.Conv2DTranspose(filters=128, kernel_size=3, strides=(2,2), padding='VALID'),
+            tf.keras.layers.GroupNormalization(groups=-1),
+            tf.keras.layers.ReLU(),
+
+            ReflectionPad2D.ReflectionPad2d(),
+            tf.keras.layers.Conv2D(filters=64, kernel_size=7, strides=(2,2), padding='VALID')
         )
 
 
     def call(self, inputs):
-        pass
+        x = self.encoder(x)
+        x = self.middle(x)
+        x = self.decoder(x)
+        x = tf.math.tanh(x)
