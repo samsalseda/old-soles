@@ -1,5 +1,7 @@
 import tensorflow as tf
 import Resnet
+import ReflectionPad2D
+
 
 class GANBlock(tf.keras.layers.Layer):
     def __init__(self):
@@ -51,7 +53,10 @@ class Discriminator(tf.keras.layers.Layer):
         self.disc4 = tf.keras.Sequential(
             [
                 tf.keras.layers.Conv2D(
-                    filters=self.hidden_size * 8, kernel_size=4, strides=(2,2), padding='SAME'
+                    filters=self.hidden_size * 8,
+                    kernel_size=4,
+                    strides=(2, 2),
+                    padding="SAME",
                 ),
                 leaky_relu_layer,
                 tf.keras.layers.SpectralNormalization(),
@@ -60,7 +65,9 @@ class Discriminator(tf.keras.layers.Layer):
 
         self.disc5 = tf.keras.Sequential(
             [
-                tf.keras.layers.Conv2D(filters=1, kernel_size=4, strides=(2,2), padding='SAME'),
+                tf.keras.layers.Conv2D(
+                    filters=1, kernel_size=4, strides=(2, 2), padding="SAME"
+                ),
                 leaky_relu_layer,
             ]
         )
@@ -75,7 +82,7 @@ class Discriminator(tf.keras.layers.Layer):
 
 class Generator(tf.keras.layers.Layer):
 
-    def __init__(self, input_size, resnet = True, block_size = 8):
+    def __init__(self, input_size, resnet=True, block_size=8):
 
         blocks = []
         if resnet:
@@ -87,7 +94,7 @@ class Generator(tf.keras.layers.Layer):
             for i in range(block_size):
                 block = tf.keras.layers.Dense(256)
                 blocks.append(block)
-        
+
         self.middle = tf.keras.Sequential(*blocks)
 
         self.encoder = tf.keras.Sequential(
@@ -125,7 +132,6 @@ class Generator(tf.keras.layers.Layer):
             ReflectionPad2D.ReflectionPad2d(),
             tf.keras.layers.Conv2D(filters=64, kernel_size=7, strides=(2,2), padding='VALID')
         )
-
 
     def call(self, inputs):
         x = self.encoder(x)
