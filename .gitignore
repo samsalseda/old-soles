@@ -162,3 +162,4 @@ cython_debug/
 ## ADDED
 data/
 code/data
+.DS_Store
