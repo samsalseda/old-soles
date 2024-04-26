@@ -1,27 +1,46 @@
 import tensorflow as tf
+from AFRM import AFRM
 
 
 class SCM_encoder(tf.keras.layers.Layer):
     def __init__(self, size):
         self.size = size
+        # change to like size, size * 2, size * 4?
         self.encoder = tf.keras.Sequential(
-            nn.ReflectionPad2d(3),
-            nn.Conv2d(in_channels=3, out_channels=64, kernel_size=7, padding=0),
-            nn.InstanceNorm2d(64, track_running_stats=False),
-            nn.ReLU(True),
-            nn.Conv2d(
-                in_channels=64, out_channels=128, kernel_size=4, stride=2, padding=1
-            ),
-            nn.InstanceNorm2d(128, track_running_stats=False),
-            nn.ReLU(True),
-            nn.Conv2d(
-                in_channels=128, out_channels=256, kernel_size=4, stride=2, padding=1
-            ),
-            nn.InstanceNorm2d(256, track_running_stats=False),
-            nn.ReLU(True),
+            tf.keras.layers.Conv2D(64, 7, padding="valid"),
+            tf.keras.layers.GroupNormalization(groups=-1),
+            tf.keras.layers.ReLU(),
+            tf.keras.layers.ZeroPadding2D(padding=(1, 1)),
+            tf.keras.layers.Conv2D(128, 4, strides=(2, 2), padding="valid"),
+            tf.keras.layers.GroupNormalization(groups=-1),
+            tf.keras.layers.ReLU(),
+            tf.keras.layers.ZeroPadding2D(padding=(1, 1)),
+            tf.keras.layers.Conv2D(256, 4, strides=(2, 2), padding="valid"),
+            tf.keras.layers.GroupNormalization(groups=-1),
+            tf.keras.layers.ReLU(),
         )
+
+    def call(self, x):
+        return self.encoder(x)
 
 
 class SCM_decoder(tf.keras.layers.Layer):
     def __init__(self, size):
         self.size = size
+        # change to like size, size / 2, size / 4?
+        self.decoder = tf.keras.Sequential(
+            tf.keras.layers.ZeroPadding2D(padding=(1, 1)),
+            tf.keras.layers.Conv2DTranspose(128, 4, strides=(2, 2), padding="valid"),
+            tf.keras.layers.GroupNormalization(groups=-1),
+            tf.keras.layers.ReLU(),
+            tf.keras.layers.ZeroPadding2D(padding=(1, 1)),
+            tf.keras.layers.Conv2D(64, 4, strides=(2, 2), padding="valid"),
+            tf.keras.layers.GroupNormalization(groups=-1),
+            tf.keras.layers.ReLU(),
+            tf.keras.layers.Conv2D(3, 7, padding="valid"),
+            tf.keras.layers.GroupNormalization(groups=-1),
+            tf.keras.layers.ReLU(),
+        )
+
+    def call(self, x):
+        return self.decoder(x)
