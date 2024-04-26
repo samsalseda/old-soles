@@ -94,7 +94,7 @@ class Discriminator(tf.keras.layers.Layer):
 
 class Generator(tf.keras.layers.Layer):
 
-    def __init__(self, input_size, resnet=True, block_size=8):
+    def __init__(self, input_size, resnet = True, block_size = 8):
 
         blocks = []
         if resnet:
@@ -111,6 +111,17 @@ class Generator(tf.keras.layers.Layer):
 
         self.generator = tf.keras.Sequential(
             [
+                ReflectionPad2D.ReflectionPad2d(),
+                tf.keras.layers.Conv2D(
+                    filters=self.input_size, kernel_size=3, strides=(2,2), padding='VALID'
+                ),
+                tf.keras.layers.ReLU(),
+                tf.keras.layers.SpectralNormalization(),
+                tf.keras.layers.Groupnormalization(groups = -1)
+
+                #May need to add more layers here
+            ]
+        )
                 ReflectionPad2D(),
                 tf.keras.layers.Conv2D(
                     filters=input_size,
