@@ -24,7 +24,7 @@ class Discriminator(tf.keras.layers.Layer):
         self.disc1 = tf.keras.Sequential(
             [
                 tf.keras.layers.Conv2D(
-                    filters=self.hidden_size, kernel_size=4, strides=2, padding=1
+                    filters=self.hidden_size, kernel_size=4, strides=(2,2), padding='SAME'
                 ),
                 leaky_relu_layer,
                 tf.keras.layers.SpectralNormalization(),
@@ -34,7 +34,7 @@ class Discriminator(tf.keras.layers.Layer):
         self.disc2 = tf.keras.Sequential(
             [
                 tf.keras.layers.Conv2D(
-                    filters=self.hidden_size * 2, kernel_size=4, strides=2, padding=1
+                    filters=self.hidden_size * 2, kernel_size=4, strides=(2,2), padding='SAME'
                 ),
                 leaky_relu_layer,
                 tf.keras.layers.SpectralNormalization(),
@@ -44,7 +44,7 @@ class Discriminator(tf.keras.layers.Layer):
         self.disc3 = tf.keras.Sequential(
             [
                 tf.keras.layers.Conv2D(
-                    filters=self.hidden_size * 4, kernel_size=4, strides=2, padding=1
+                    filters=self.hidden_size * 4, kernel_size=4, strides=(2,2), padding='SAME'
                 ),
                 leaky_relu_layer,
                 tf.keras.layers.SpectralNormalization(),
@@ -54,7 +54,7 @@ class Discriminator(tf.keras.layers.Layer):
         self.disc4 = tf.keras.Sequential(
             [
                 tf.keras.layers.Conv2D(
-                    filters=self.hidden_size * 8, kernel_size=4, strides=2, padding=1
+                    filters=self.hidden_size * 8, kernel_size=4, strides=(2,2), padding='SAME'
                 ),
                 leaky_relu_layer,
                 tf.keras.layers.SpectralNormalization(),
@@ -63,7 +63,7 @@ class Discriminator(tf.keras.layers.Layer):
 
         self.disc5 = tf.keras.Sequential(
             [
-                tf.keras.layers.Conv2D(filters=1, kernel_size=4, strides=2, padding=1),
+                tf.keras.layers.Conv2D(filters=1, kernel_size=4, strides=(2,2), padding='SAME'),
                 leaky_relu_layer,
             ]
         )
