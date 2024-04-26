@@ -1,5 +1,5 @@
 import tensorflow as tf
-import ReflectionPad2D
+from ReflectionPad2D import ReflectionPad2D
 
 class ResidualBlock(tf.keras.layers.Layer):
 
@@ -7,24 +7,29 @@ class ResidualBlock(tf.keras.layers.Layer):
         self.input_size = input_size
         self.conv_block = tf.keras.Sequential(
             [
-                ReflectionPad2D.ReflectionPad2d(),
-                tf.keras.layers.SpectralNormalization(tf.keras.layers.Conv2D(
-                    filters=self.input_size, kernel_size=3, strides=(2,2), padding='VALID'
-                )),
-                tf.keras.layers.Groupnormalization(groups = -1),
+                ReflectionPad2D(),
+                tf.keras.layers.SpectralNormalization(
+                    tf.keras.layers.Conv2D(
+                        filters=self.input_size,
+                        kernel_size=3,
+                        strides=(2, 2),
+                        padding="VALID",
+                    )
+                ),
+                tf.keras.layers.GroupNormalization(groups=-1),
                 tf.keras.layers.ReLU(),
-                
-                ReflectionPad2D.ReflectionPad2d(),
-                tf.keras.layers.SpectralNormalization(tf.keras.layers.Conv2D(
-                    filters=self.input_size, kernel_size=3, strides=(2,2), padding='VALID'
-                )),
-                tf.keras.layers.Groupnormalization(groups = -1),
-
-                #May need to add more layers here
+                ReflectionPad2D(),
+                tf.keras.layers.SpectralNormalization(
+                    tf.keras.layers.Conv2D(
+                        filters=self.input_size,
+                        kernel_size=3,
+                        strides=(2, 2),
+                        padding="VALID",
+                    )
+                ),
+                tf.keras.layers.GroupNormalization(groups=-1),
             ]
         )
-        
 
     def call(self, inputs):
         return inputs + self.conv_block(inputs)
-    
