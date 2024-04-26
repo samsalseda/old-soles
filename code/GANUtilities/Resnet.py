@@ -1,6 +1,7 @@
 import tensorflow as tf
 from ReflectionPad2D import ReflectionPad2D
 
+
 class ResidualBlock(tf.keras.layers.Layer):
 
     def __init__(self, input_size):
