@@ -1,5 +1,6 @@
 import argparse
 import tensorflow as tf
+import numpy as np
 
 
 def parse_args(args=None):
@@ -14,6 +15,7 @@ def parse_args(args=None):
         description="Let's train some neural nets!",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
+    # TODO: Change arguments to include batch_size, maybe even something about number of GAN blocks to use, etc.
     parser.add_argument(
         "--type",
         required=True,
@@ -26,108 +28,121 @@ def parse_args(args=None):
 
 
 def main(self, args):
-    gist, color = get_feature_dicts()
+    # TODO: call prorocessing, build the model
+    # TODO: train using the preprocessed image stuff
+    # TODO: test using the preprocessed image stuff
+    pass
 
 
 class ShoeGenerationModel(tf.keras.Model):
 
-    def __init__(self, **kwargs):
+    def __init__(self, generator, discriminator, **kwargs):
         super().__init__(**kwargs)
+        self.generator, self.discriminator = generator, discriminator
+        # TODO: convert parameters to lists, for multile GAN blocks to iterate thorugh
 
     @tf.function
     def call(self, sketch_images, real_images):
-        pass
+        return self.discriminator(self.generator(sketch_images))
 
     def compile(self, optimizer, loss, metrics):
         """
         Create a facade to mimic normal keras fit routine
         """
         self.optimizer = optimizer
-        self.total_loss_function = loss
-        self.accuracy = metrics
+        self.loss = loss
+        self.metrics = metrics
 
-    def train(self, real_images, sketch_images, batch_size=30):
+    def train(self, real_images, sketch_images, batch_size=30, epochs=1):
         """
         Runs through all Epochs and trains
+        """
+        for e in range(epochs):
+            avg_loss = 0
+            avg_acc = 0
 
+            num_batches = int(len(sketch_images) / batch_size)
+            total_loss = 0
 
+            indicies_unshuffled = tf.range(len(sketch_images))
+            indicies = tf.random.shuffle(indicies_unshuffled)
+            train_real_images_shuffled = tf.gather(real_images, indicies)
+            train_sketch_images_shuffled = tf.gather(sketch_images, indicies)
+
+            for index, end in enumerate(
+                range(batch_size, len(real_images) + 1, batch_size)
+            ):
+                start = end - batch_size
+                batch_sketch_images = train_sketch_images_shuffled[start:end, :]
+                batch_real_images = train_real_images_shuffled[start:end, :]
+
+                with tf.GradientTape() as tape:
+                    output = self.discriminator(self.generator(batch_sketch_images))
+                    loss = self.loss(
+                        output, batch_real_images
+                    )  # TODO: ADD PARAMS like in losses.py file
+                    metrics = []
+                    for metric in self.metrics:
+                        metrics += [
+                            metric(output, batch_real_images)
+                        ]  ## TODO: ADJUST params as needed
+                    np.asarray(metrics)
+
+                gradients = tape.gradient(loss, self.trainable_variables)
+                self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+
+                total_loss += loss
+                avg_loss = float(total_loss / (start - end))
+                avg_metrics = float(metrics / (start - end))
+
+                print(
+                    f"\r[Epoch: {e} \t Batch Index: {index+1}/{num_batches}]\t batch_loss={avg_loss:.3f}\t batch_metrics: {avg_acc:.3f}\t",
+                    end="",
+                )
+
+        return avg_loss, avg_metrics
+
+    def train(self, real_images, sketch_images):
+        """
+        Runs through all Epochs and trains
         """
         avg_loss = 0
         avg_acc = 0
-        avg_prp = 0
 
-        num_batches = int(len(sketch_images) / batch_size)
-        total_loss = total_seen = total_correct = 0
+        total_loss = 0
+        num_examples = len(real_images)
 
-        indicies_unshuffled = tf.range(len(sketch_images))
-        indicies = tf.random.shuffle(indicies_unshuffled)
-        train_captions_shuffled = tf.gather(train_captions, indicies)
-        train_image_features_shuffled = tf.gather(train_image_features, indicies)
+        output = self.discriminator(self.generator(sketch_images))
+        loss = self.loss(output, real_images)  # TODO: ADD PARAMS like in losses.py file
+        metrics = []
+        for metric in self.metrics:
+            metrics += [metric(output, real_images)]  ## TODO: ADJUST params as needed
+        np.asarray(metrics)
 
-        for index, end in enumerate(
-            range(batch_size, len(train_captions) + 1, batch_size)
-        ):
-            start = end - batch_size
-            batch_image_features = train_image_features_shuffled[start:end, :]
-            decoder_input = train_captions_shuffled[start:end, :-1]
-            decoder_labels = train_captions_shuffled[start:end, 1:]
+        total_loss += loss
+        avg_loss = float(total_loss / num_examples)
+        avg_metrics = float(metrics / num_examples)
 
-            with tf.GradientTape() as tape:
-                probs = self(batch_image_features, decoder_input)
-                mask = decoder_labels != padding_index
-                num_predictions = tf.reduce_sum(tf.cast(mask, tf.float32))
-                # print(probs.shape)
-                # print(decoder_labels.shape)
-                # print(padding_index)
-                loss = self.loss_function(probs, decoder_labels, mask)
-                accuracy = self.accuracy_function(probs, decoder_labels, mask)
+        print(
+            f"\r[Testing: loss={avg_loss:.3f}\t metrics: {avg_acc:.3f}\t",
+            end="",
+        )
 
-            gradients = tape.gradient(loss, self.trainable_variables)
-            self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
-
-            total_loss += loss
-            total_seen += num_predictions
-            total_correct += num_predictions * accuracy
-
-            avg_loss = float(total_loss / total_seen)
-            avg_acc = float(total_correct / total_seen)
-            avg_prp = np.exp(avg_loss)
-
-            print(
-                f"\r[Valid {index+1}/{num_batches}]\t loss={avg_loss:.3f}\t acc: {avg_acc:.3f}\t perp: {avg_prp:.3f}",
-                end="",
-            )
-        ## NOTE: shuffle the training examples (perhaps using tf.random.shuffle on a
-        ##       range of indices spanning # of training entries, then tf.gather)
-        ##       to make training smoother over multiple epochs.
-
-        ## NOTE: make sure you are calculating gradients and optimizing as appropriate
-        ##       (similar to batch_step from HW2)
-
-        return avg_loss, avg_acc, avg_prp
-
-    def get_config(self):
-        base_config = super().get_config()
-        config = {
-            "decoder": tf.keras.utils.serialize_keras_object(self.decoder),
-        }
-        return {**base_config, **config}
-
-    @classmethod
-    def from_config(cls, config):
-        decoder_config = config.pop("decoder")
-        decoder = tf.keras.utils.deserialize_keras_object(decoder_config)
-        return cls(decoder, **config)
+        return avg_loss, avg_metrics
 
     # def get_config(self):
-    #     return {"decoder": self.decoder}  ## specific to ImageCaptionModel
+    #     base_config = super().get_config()
+    #     config = {
+    #         "decoder": tf.keras.utils.serialize_keras_object(self.decoder),
+    #     }
+    #     return {**base_config, **config}
 
     # @classmethod
     # def from_config(cls, config):
-    #     return cls(**config)
+    #     decoder_config = config.pop("decoder")
+    #     decoder = tf.keras.utils.deserialize_keras_object(decoder_config)
+    #     return cls(decoder, **config)
 
 
 if __name__ == "__main__":
     main(parse_args())
-    # call prorocessing, build the model
-    # train using the preprocessed image stuff
