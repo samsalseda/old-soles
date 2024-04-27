@@ -26,28 +26,43 @@ class Discriminator(tf.keras.layers.Layer):
         leaky_relu_layer = tf.keras.layers.LeakyReLU(negative_slope=0.5)
         self.disc1 = tf.keras.Sequential(
             [
-                tf.keras.layers.SpectralNormalization(tf.keras.layers.Conv2D(
-                    filters=self.hidden_size, kernel_size=4, strides=(2,2), padding='SAME'
-                )),
-                leaky_relu_layer
+                tf.keras.layers.SpectralNormalization(
+                    tf.keras.layers.Conv2D(
+                        filters=self.hidden_size,
+                        kernel_size=4,
+                        strides=(2, 2),
+                        padding="SAME",
+                    )
+                ),
+                leaky_relu_layer,
             ]
         )
 
         self.disc2 = tf.keras.Sequential(
             [
-                tf.keras.layers.SpectralNormalization(tf.keras.layers.Conv2D(
-                    filters=self.hidden_size * 2, kernel_size=4, strides=(2,2), padding='SAME'
-                )),
-                leaky_relu_layer
+                tf.keras.layers.SpectralNormalization(
+                    tf.keras.layers.Conv2D(
+                        filters=self.hidden_size * 2,
+                        kernel_size=4,
+                        strides=(2, 2),
+                        padding="SAME",
+                    )
+                ),
+                leaky_relu_layer,
             ]
         )
 
         self.disc3 = tf.keras.Sequential(
             [
-                tf.keras.layers.SpectralNormalization(tf.keras.layers.Conv2D(
-                    filters=self.hidden_size, kernel_size=4, strides=(2,2), padding='SAME'
-                )),
-                leaky_relu_layer
+                tf.keras.layers.SpectralNormalization(
+                    tf.keras.layers.Conv2D(
+                        filters=self.hidden_size,
+                        kernel_size=4,
+                        strides=(2, 2),
+                        padding="SAME",
+                    )
+                ),
+                leaky_relu_layer,
             ]
         )
 
@@ -83,12 +98,13 @@ class Discriminator(tf.keras.layers.Layer):
 
 class Generator(tf.keras.layers.Layer):
 
-    def __init__(self): 
+    def __init__(self):
         self.MFFE = MFFEBlock()
 
     def call(self, inputs):
-        #May need to add more layers to have CSCM between diffrent generators
+        # May need to add more layers to have CSCM between diffrent generators
         return self.MFFEBlock(inputs)
+
 
 # class Generator(tf.keras.layers.Layer):
 
@@ -115,7 +131,7 @@ class Generator(tf.keras.layers.Layer):
 #                 )),
 #                 tf.keras.layers.GroupNormalization(groups = -1),
 #                 tf.keras.layers.ReLU(),
-                
+
 #                 ReflectionPad2D.ReflectionPad2d(),
 #                 tf.keras.layers.SpectralNormalization(tf.keras.layers.Conv2D(
 #                     filters=128, kernel_size=3, strides=(2,2), padding='VALID'
