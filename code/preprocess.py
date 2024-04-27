@@ -8,20 +8,19 @@ import random
 def preprocess_data(input_path, target_path, input_list, target_list, transform):
     data = []
     for input_filename, target_filename in zip(input_list, target_list):
-        input_img = Image.open(os.path.join(input_path, input_filename)).convert('RGB')
-        target_img = Image.open(os.path.join(target_path, target_filename)).convert('RGB')
-
-        # Apply transformations
-        input_img = transform(input_img)
-        target_img = transform(target_img)
+        with Image.open(os.path.join(input_path, input_filename)).convert('RGB') as input_img, \
+             Image.open(os.path.join(target_path, target_filename)).convert('RGB') as target_img:
+            
+            input_img = transform(input_img)
+            target_img = transform(target_img)
 
         data.append((input_img, target_img))
 
     return data
 
 def load_data(data_folder, im_size=256, shuffle=True):
-    input_path = os.path.join(data_folder, 'images2')
-    target_path = os.path.join(data_folder, 'sketches2')
+    input_path = os.path.join(data_folder, 'images')
+    target_path = os.path.join(data_folder, 'sketches')
     input_list = [f for f in os.listdir(input_path) if f.endswith('.jpg')]
     target_list = [f for f in os.listdir(target_path) if f.endswith('.jpg')]
     
