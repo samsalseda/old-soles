@@ -98,8 +98,9 @@ class Discriminator(tf.keras.layers.Layer):
 
 class Generator(tf.keras.layers.Layer):
 
-    def __init__(self):
-        self.MFFE = MFFEBlock()
+    def __init__(self, size=[256, 4, 4], splits=4, resnet = True, block_size = 8):
+        self.height, self.width = size[1], size[2]
+        self.MFFE = MFFEBlock(size, splits, resnet, block_size)
 
     def call(self, inputs):
         # May need to add more layers to have CSCM between diffrent generators

@@ -1,6 +1,7 @@
 import argparse
 import tensorflow as tf
 import numpy as np
+from GANBlock import Generator, Discriminator
 
 
 def parse_args(args=None):
@@ -17,10 +18,10 @@ def parse_args(args=None):
     )
     # TODO: Change arguments to include batch_size, maybe even something about number of GAN blocks to use, etc.
     parser.add_argument(
-        "--type",
-        required=True,
-        choices=["rnn", "transformer"],
-        help="Type of model to train",
+        "--num_blocks",
+        type=int,
+        default=5,
+        help="number of GAN Blocks in the model",
     )
     if args is None:
         return parser.parse_args()  ## For calling through command line
@@ -31,19 +32,46 @@ def main(self, args):
     # TODO: call prorocessing, build the model
     # TODO: train using the preprocessed image stuff
     # TODO: test using the preprocessed image stuff
-    pass
+    
+    generators = []
+    discriminators = []
+    res = 256
+
+    for i in range(args.num_blocks):
+        
+        generators += [Generator([256, res, res])]
+        discriminators += [Discriminator(res * res)]
+
+        res /= 2
+
+        generators.reverse()
+        discriminators.reverse()
+
+    model = ShoeGenerationModel(generators, discriminators)
 
 
 class ShoeGenerationModel(tf.keras.Model):
 
-    def __init__(self, generator, discriminator, **kwargs):
+    def __init__(self, generators, discriminators, **kwargs):
         super().__init__(**kwargs)
-        self.generator, self.discriminator = generator, discriminator
+        self.generators, self.discriminators = generators, discriminators
         # TODO: convert parameters to lists, for multile GAN blocks to iterate thorugh
 
     @tf.function
     def call(self, sketch_images, real_images):
-        return self.discriminator(self.generator(sketch_images))
+        input_images = tf.keras.layers.Resizing(self.generators[0].height, self.generators[0])(sketch_images)
+
+        disc_outputs, gen_outputs = [], []
+
+        for generator, discriminator in zip(self.generators, self.discriminators):
+            generated_images = generator(input_images)
+            gen_outputs += [generated_images]
+            disc_outputs += [discriminator(generated_images)]
+            generated_images = tf.keras.layers.Resizing(generator.height * 2, generator.width * 2)(generated_images)
+            upsampled_sketch = tf.keras.layers.Resizing(generator.height * 2, generator.width * 2)(sketch_images)
+            input_images = tf.concat(upsampled_sketch, generated_images)
+    
+        return tf.convert_to_tensor(gen_outputs), tf.convert_to_tensor(disc_outputs)
 
     def compile(self, optimizer, loss, metrics):
         """
@@ -102,7 +130,7 @@ class ShoeGenerationModel(tf.keras.Model):
 
         return avg_loss, avg_metrics
 
-    def train(self, real_images, sketch_images):
+    def test(self, real_images, sketch_images):
         """
         Runs through all Epochs and trains
         """
