@@ -61,17 +61,22 @@ class ShoeGenerationModel(tf.keras.Model):
     def call(self, sketch_images, real_images):
         input_images = tf.keras.layers.Resizing(self.generators[0].height, self.generators[0])(sketch_images)
 
-        disc_outputs, gen_outputs = [], []
+        disc_outputs, gen_outputs, real_images_resized = [], [], []
 
         for generator, discriminator in zip(self.generators, self.discriminators):
+            resizing_layer = tf.keras.layers.Resizing(generator.height * 2, generator.width * 2)
+
             generated_images = generator(input_images)
             gen_outputs += [generated_images]
             disc_outputs += [discriminator(generated_images)]
-            generated_images = tf.keras.layers.Resizing(generator.height * 2, generator.width * 2)(generated_images)
-            upsampled_sketch = tf.keras.layers.Resizing(generator.height * 2, generator.width * 2)(sketch_images)
+            upsampled_real = resizing_layer(real_images)
+            real_images_resized += [upsampled_real]
+
+            generated_images = resizing_layer(generated_images)
+            upsampled_sketch = resizing_layer(generator.height * 2, generator.width * 2)(sketch_images)
             input_images = tf.concat(upsampled_sketch, generated_images)
     
-        return tf.convert_to_tensor(gen_outputs), tf.convert_to_tensor(disc_outputs)
+        return tf.convert_to_tensor(gen_outputs), tf.convert_to_tensor(disc_outputs), tf.convert_to_tensor(real_images_resized)
 
     def compile(self, optimizer, loss, metrics):
         """
@@ -90,7 +95,7 @@ class ShoeGenerationModel(tf.keras.Model):
             avg_acc = 0
 
             num_batches = int(len(sketch_images) / batch_size)
-            total_loss = 0
+            last_losses = 0
 
             indicies_unshuffled = tf.range(len(sketch_images))
             indicies = tf.random.shuffle(indicies_unshuffled)
@@ -105,22 +110,26 @@ class ShoeGenerationModel(tf.keras.Model):
                 batch_real_images = train_real_images_shuffled[start:end, :]
 
                 with tf.GradientTape() as tape:
-                    output = self.discriminator(self.generator(batch_sketch_images))
-                    loss = self.loss(
-                        output, batch_real_images
-                    )  # TODO: ADD PARAMS like in losses.py file
-                    metrics = []
-                    for metric in self.metrics:
-                        metrics += [
-                            metric(output, batch_real_images)
-                        ]  ## TODO: ADJUST params as needed
-                    np.asarray(metrics)
+                    gen_outputs, disc_outputs, real_images_resized = self.call(batch_sketch_images, real_images)
+                    losses = []
+                    metrics_2d = []
+                    for gen_output, disc_output, real_image, discriminator in zip(gen_outputs, disc_outputs, real_images_resized, self.discriminators):
+                        losses += [self.loss(
+                            gen_output, real_image, disc_output, discriminator(real_image))]  # TODO: ADD PARAMS like in losses.py file
+                        metrics = []
+                        for metric in self.metrics:
+                            metrics += [
+                                metric(gen_output, real_image)
+                            ]  ## TODO: ADJUST params as needed
+                        metrics_2d += [metrics]
+                        np.asarray(metrics_2d)
 
-                gradients = tape.gradient(loss, self.trainable_variables)
-                self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+                for loss in losses:
+                    gradients = tape.gradient(loss, self.trainable_variables)
+                    self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
 
-                total_loss += loss
-                avg_loss = float(total_loss / (start - end))
+                last_losses += loss
+                avg_loss = float(last_losses / (start - end))
                 avg_metrics = float(metrics / (start - end))
 
                 print(

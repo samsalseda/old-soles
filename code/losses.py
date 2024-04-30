@@ -22,7 +22,6 @@ def style_loss(generated_image, real_image):
 
 
 def total_loss(
-    self,
     generated_image,
     real_image,
     disc_output_generated,
@@ -32,9 +31,9 @@ def total_loss(
     lambda_s=0.1,
     lambda_p=250.0,
 ):
-    loss = lambda_d * self.distance_loss(generated_image, real_image)
-    loss += lambda_a * self.adversarial_loss(disc_output_generated, disc_output_real)
-    loss += lambda_s * self.style_loss(generated_image, real_image)
-    # loss += lambda_p * self.perceptual_loss()
+    loss = lambda_d * distance_loss(generated_image, real_image)
+    loss += lambda_a * adversarial_loss(disc_output_generated, disc_output_real)
+    loss += lambda_s * style_loss(generated_image, real_image)
+    # loss += lambda_p * perceptual_loss()
 
     return loss
