@@ -27,10 +27,10 @@ def total_loss(
     real_image,
     disc_output_generated,
     disc_output_real,
-    lambda_d,
-    lambda_a,
-    lambda_s,
-    lambda_p,
+    lambda_d=1.5,
+    lambda_a=10.0,
+    lambda_s=0.1,
+    lambda_p=250.0,
 ):
     loss = lambda_d * self.distance_loss(generated_image, real_image)
     loss += lambda_a * self.adversarial_loss(disc_output_generated, disc_output_real)
