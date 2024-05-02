@@ -6,8 +6,10 @@ def distance_loss(generated_image, real_image):
 
 
 def adversarial_loss(disc_output_generated, disc_output_real):
-    return tf.reduce_mean(tf.math.log(disc_output_real)) + tf.reduce_mean(
-        tf.math.log(1 - disc_output_generated)
+    return tf.reduce_mean(
+        tf.math.log(tf.clip_by_value(disc_output_real, 0.001, 10000000))
+    ) + tf.reduce_mean(
+        tf.math.log(tf.clip_by_value(1 - disc_output_generated, 0.001, 10000000))
     )
 
 

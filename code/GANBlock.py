@@ -3,6 +3,7 @@ import GANUtilities.Resnet
 import GANUtilities.ReflectionPad2D
 from GANUtilities.MFFE import MFFEBlock
 
+
 class GANBlock(tf.keras.layers.Layer):
     def __init__(self):
         self.generator = Generator()
@@ -23,7 +24,7 @@ class Discriminator(tf.keras.layers.Layer):
         self.input_size = input_size
         self.hidden_size = 32
 
-        leaky_relu_layer = tf.keras.layers.LeakyReLU(negative_slope=0.5)
+        leaky_relu_layer = tf.keras.layers.LeakyReLU(alpha=0.5)
         self.disc1 = tf.keras.Sequential(
             [
                 tf.keras.layers.SpectralNormalization(
@@ -68,12 +69,14 @@ class Discriminator(tf.keras.layers.Layer):
 
         self.disc4 = tf.keras.Sequential(
             [
-                tf.keras.layers.SpectralNormalization(tf.keras.layers.Conv2D(
-                    filters=self.hidden_size * 8,
-                    kernel_size=4,
-                    strides=(2, 2),
-                    padding="SAME",
-                )),
+                tf.keras.layers.SpectralNormalization(
+                    tf.keras.layers.Conv2D(
+                        filters=self.hidden_size * 8,
+                        kernel_size=4,
+                        strides=(2, 2),
+                        padding="SAME",
+                    )
+                ),
                 leaky_relu_layer,
             ]
         )
@@ -92,12 +95,13 @@ class Discriminator(tf.keras.layers.Layer):
         )
 
     def call(self, inputs):
+        print(f"inputs shape: {inputs.shape}")
         return self.full_discriminaor(inputs)
 
 
 class Generator(tf.keras.layers.Layer):
 
-    def __init__(self, size=[256, 4, 4], splits=4, resnet = True, block_size = 8):
+    def __init__(self, size=[256, 4, 4], splits=4, resnet=True, block_size=8):
         super().__init__()
         self.height, self.width = size[1], size[2]
         self.MFFE = MFFEBlock(size, splits, resnet, block_size)

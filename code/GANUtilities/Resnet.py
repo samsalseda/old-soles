@@ -1,6 +1,7 @@
 import tensorflow as tf
 from GANUtilities.ReflectionPad2D import ReflectionPad2D
 
+
 class ResidualBlock(tf.keras.layers.Layer):
 
     def __init__(self, input_size):
@@ -15,7 +16,7 @@ class ResidualBlock(tf.keras.layers.Layer):
                         3,
                         strides=(1, 1),
                         padding="VALID",
-                        dilation_rate=1
+                        dilation_rate=1,
                     )
                 ),
                 tf.keras.layers.GroupNormalization(groups=-1),
@@ -27,7 +28,7 @@ class ResidualBlock(tf.keras.layers.Layer):
                         3,
                         strides=(1, 1),
                         padding="VALID",
-                        dilation_rate=1
+                        dilation_rate=1,
                     )
                 ),
                 tf.keras.layers.GroupNormalization(groups=-1),

@@ -3,6 +3,7 @@ import tensorflow as tf
 import numpy as np
 from GANBlock import Generator, Discriminator
 from preprocess_temp import process
+from losses import total_loss
 
 
 def parse_args(args=None):
@@ -21,7 +22,7 @@ def parse_args(args=None):
     parser.add_argument(
         "--num_blocks",
         type=int,
-        default=5,
+        default=4,
         help="number of GAN Blocks in the model",
     )
     if args is None:
@@ -33,7 +34,7 @@ def main(args):
     # TODO: call prorocessing, build the model
     # TODO: train using the preprocessed image stuff
     # TODO: test using the preprocessed image stuff
-    
+
     sketches, real = process()
     sketches = tf.convert_to_tensor(sketches, dtype=tf.float64)
     real = tf.convert_to_tensor(real, dtype=tf.float64)
@@ -41,9 +42,14 @@ def main(args):
     generators = []
     discriminators = []
     res = 256
+    if args.num_blocks > 4 or args.num_blocks < 1:
+        print(
+            "Too many GAN Blocks, must be less or equal to 4 and greater than or equal to 1"
+        )
+        return
 
-    for i in range(args.num_blocks):
-        
+    for _ in range(args.num_blocks):
+
         generators += [Generator([256, res, res])]
         discriminators += [Discriminator(res * res)]
 
@@ -65,6 +71,7 @@ class ShoeGenerationModel(tf.keras.Model):
     def __init__(self, generators, discriminators, **kwargs):
         super().__init__(**kwargs)
         self.generators, self.discriminators = generators, discriminators
+        self.optimizer = tf.keras.optimizers.Adam()
         # TODO: convert parameters to lists, for multile GAN blocks to iterate thorugh
 
     @tf.function
@@ -75,18 +82,25 @@ class ShoeGenerationModel(tf.keras.Model):
         disc_outputs, gen_outputs, real_images_resized = [], [], []
 
         for generator, discriminator in zip(self.generators, self.discriminators):
-            resizing_layer = tf.keras.layers.Resizing(int(generator.height * 2), int(generator.width * 2))
+            resizing_layer = tf.keras.layers.Resizing(
+                int(generator.height * 2), int(generator.width * 2)
+            )
 
             generated_images = generator(input_images)
+            print(f"generated images shape: {generated_images.shape}")
+
             gen_outputs += [generated_images]
             disc_outputs += [discriminator(generated_images)]
-            upsampled_real = resizing_layer(real_images)
+            resizing_layer_images = tf.keras.layers.Resizing(
+                int(generator.height), int(generator.width)
+            )
+            upsampled_real = resizing_layer_images(real_images)
             real_images_resized += [upsampled_real]
 
             generated_images = resizing_layer(generated_images)
             upsampled_sketch = resizing_layer(sketch_images)
             input_images = tf.concat([upsampled_sketch, generated_images], axis=-1)
-    
+
         return gen_outputs, disc_outputs, real_images_resized
 
     def compile(self, optimizer, loss, metrics):
@@ -122,30 +136,49 @@ class ShoeGenerationModel(tf.keras.Model):
                 batch_real_images = train_real_images_shuffled[start:end, :]
 
                 with tf.GradientTape() as tape:
-                    gen_outputs, disc_outputs, real_images_resized = self.call(batch_sketch_images, batch_real_images)
+                    gen_outputs, disc_outputs, real_images_resized = self.call(
+                        batch_sketch_images, batch_real_images
+                    )
                     losses = []
                     metrics_2d = []
-                    for gen_output, disc_output, real_image, discriminator in zip(gen_outputs, disc_outputs, real_images_resized, self.discriminators):
-                        losses += [self.loss(
-                            gen_output, real_image, disc_output, discriminator(batch_real_images))]  # TODO: ADD PARAMS like in losses.py file
+                    for gen_output, disc_output, real_image, discriminator in zip(
+                        gen_outputs,
+                        disc_outputs,
+                        real_images_resized,
+                        self.discriminators,
+                    ):
+                        print(gen_output.shape)
+                        print(real_image.shape)
+                        losses += [
+                            total_loss(
+                                gen_output,
+                                real_image,
+                                disc_output,
+                                discriminator(
+                                    batch_real_images
+                                ),  # TODO: THIS line of discriminator(batch_real_imgages) IS AN ERROR. IT SHOULD BE THE BATCH OF RESIZED IMAGES
+                            )
+                        ]
                         metrics = []
                         for metric in self.metrics:
                             metrics += [
                                 metric(gen_output, real_image)
                             ]  ## TODO: ADJUST params as needed
                         metrics_2d += [metrics]
-                        np.asarray(metrics_2d)
+                    metrics_2d = np.asarray(metrics_2d)
 
                 for loss in losses:
                     gradients = tape.gradient(loss, self.trainable_variables)
-                    self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+                    self.optimizer.apply_gradients(
+                        zip(gradients, self.trainable_variables)
+                    )
 
                 last_losses += loss
                 avg_loss = float(last_losses / (start - end))
-                avg_metrics = float(metrics / (start - end))
+                avg_metrics = metrics_2d / (start - end)
 
                 print(
-                    f"\r[Epoch: {e} \t Batch Index: {index+1}/{num_batches}]\t batch_loss={avg_loss:.3f}\t batch_metrics: {avg_acc:.3f}\t",
+                    f"\r[Epoch: {e} \t Batch Index: {index+1}/{num_batches}]\t batch_loss={avg_loss:.3f}\t batch_metrics: {avg_metrics:.3f}\t",
                     end="",
                 )
 
