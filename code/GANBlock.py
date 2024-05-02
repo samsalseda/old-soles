@@ -1,8 +1,7 @@
 import tensorflow as tf
-import Resnet
-import ReflectionPad2D
-from MFFE import MFFEBlock
-
+import GANUtilities.Resnet
+import GANUtilities.ReflectionPad2D
+from GANUtilities.MFFE import MFFEBlock
 
 class GANBlock(tf.keras.layers.Layer):
     def __init__(self):
@@ -20,6 +19,7 @@ class GANBlock(tf.keras.layers.Layer):
 class Discriminator(tf.keras.layers.Layer):
 
     def __init__(self, input_size):
+        super().__init__()
         self.input_size = input_size
         self.hidden_size = 32
 
@@ -68,14 +68,13 @@ class Discriminator(tf.keras.layers.Layer):
 
         self.disc4 = tf.keras.Sequential(
             [
-                tf.keras.layers.Conv2D(
+                tf.keras.layers.SpectralNormalization(tf.keras.layers.Conv2D(
                     filters=self.hidden_size * 8,
                     kernel_size=4,
                     strides=(2, 2),
                     padding="SAME",
-                ),
+                )),
                 leaky_relu_layer,
-                tf.keras.layers.SpectralNormalization(),
             ]
         )
 
@@ -99,12 +98,13 @@ class Discriminator(tf.keras.layers.Layer):
 class Generator(tf.keras.layers.Layer):
 
     def __init__(self, size=[256, 4, 4], splits=4, resnet = True, block_size = 8):
+        super().__init__()
         self.height, self.width = size[1], size[2]
         self.MFFE = MFFEBlock(size, splits, resnet, block_size)
 
     def call(self, inputs):
         # May need to add more layers to have CSCM between diffrent generators
-        return self.MFFEBlock(inputs)
+        return self.MFFE(inputs)
 
 
 # class Generator(tf.keras.layers.Layer):

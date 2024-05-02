@@ -2,6 +2,7 @@ import argparse
 import tensorflow as tf
 import numpy as np
 from GANBlock import Generator, Discriminator
+from preprocess_temp import process
 
 
 def parse_args(args=None):
@@ -28,11 +29,15 @@ def parse_args(args=None):
     return parser.parse_args(args)  ## For calling through notebook.
 
 
-def main(self, args):
+def main(args):
     # TODO: call prorocessing, build the model
     # TODO: train using the preprocessed image stuff
     # TODO: test using the preprocessed image stuff
     
+    sketches, real = process()
+    sketches = tf.convert_to_tensor(sketches, dtype=tf.float64)
+    real = tf.convert_to_tensor(real, dtype=tf.float64)
+
     generators = []
     discriminators = []
     res = 256
@@ -44,10 +49,15 @@ def main(self, args):
 
         res /= 2
 
-        generators.reverse()
-        discriminators.reverse()
+    generators.reverse()
+    discriminators.reverse()
 
     model = ShoeGenerationModel(generators, discriminators)
+
+    loss, metrics = model.train(sketches, real)
+
+    print(f"loss: {loss}")
+    print(f"accuracy: {metrics}")
 
 
 class ShoeGenerationModel(tf.keras.Model):
@@ -59,12 +69,13 @@ class ShoeGenerationModel(tf.keras.Model):
 
     @tf.function
     def call(self, sketch_images, real_images):
-        input_images = tf.keras.layers.Resizing(self.generators[0].height, self.generators[0])(sketch_images)
+        height, width = self.generators[0].height, self.generators[0].width
+        input_images = tf.image.resize(sketch_images, [int(height), int(width)])
 
         disc_outputs, gen_outputs, real_images_resized = [], [], []
 
         for generator, discriminator in zip(self.generators, self.discriminators):
-            resizing_layer = tf.keras.layers.Resizing(generator.height * 2, generator.width * 2)
+            resizing_layer = tf.keras.layers.Resizing(int(generator.height * 2), int(generator.width * 2))
 
             generated_images = generator(input_images)
             gen_outputs += [generated_images]
@@ -73,10 +84,10 @@ class ShoeGenerationModel(tf.keras.Model):
             real_images_resized += [upsampled_real]
 
             generated_images = resizing_layer(generated_images)
-            upsampled_sketch = resizing_layer(generator.height * 2, generator.width * 2)(sketch_images)
-            input_images = tf.concat(upsampled_sketch, generated_images)
+            upsampled_sketch = resizing_layer(sketch_images)
+            input_images = tf.concat([upsampled_sketch, generated_images], axis=-1)
     
-        return tf.convert_to_tensor(gen_outputs), tf.convert_to_tensor(disc_outputs), tf.convert_to_tensor(real_images_resized)
+        return gen_outputs, disc_outputs, real_images_resized
 
     def compile(self, optimizer, loss, metrics):
         """
@@ -86,7 +97,7 @@ class ShoeGenerationModel(tf.keras.Model):
         self.loss = loss
         self.metrics = metrics
 
-    def train(self, real_images, sketch_images, batch_size=30, epochs=1):
+    def train(self, real_images, sketch_images, batch_size=4, epochs=2):
         """
         Runs through all Epochs and trains
         """
@@ -96,6 +107,7 @@ class ShoeGenerationModel(tf.keras.Model):
 
             num_batches = int(len(sketch_images) / batch_size)
             last_losses = 0
+            avg_metrics = avg_acc = avg_loss = 0
 
             indicies_unshuffled = tf.range(len(sketch_images))
             indicies = tf.random.shuffle(indicies_unshuffled)
@@ -110,12 +122,12 @@ class ShoeGenerationModel(tf.keras.Model):
                 batch_real_images = train_real_images_shuffled[start:end, :]
 
                 with tf.GradientTape() as tape:
-                    gen_outputs, disc_outputs, real_images_resized = self.call(batch_sketch_images, real_images)
+                    gen_outputs, disc_outputs, real_images_resized = self.call(batch_sketch_images, batch_real_images)
                     losses = []
                     metrics_2d = []
                     for gen_output, disc_output, real_image, discriminator in zip(gen_outputs, disc_outputs, real_images_resized, self.discriminators):
                         losses += [self.loss(
-                            gen_output, real_image, disc_output, discriminator(real_image))]  # TODO: ADD PARAMS like in losses.py file
+                            gen_output, real_image, disc_output, discriminator(batch_real_images))]  # TODO: ADD PARAMS like in losses.py file
                         metrics = []
                         for metric in self.metrics:
                             metrics += [

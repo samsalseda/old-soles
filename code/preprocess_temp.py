@@ -5,11 +5,9 @@ from imageio import imread
 
 
 def process():
-    a = glob.glob("home")
-    b = glob.glob("results")
     i = 0
-    filelist_input = glob.glob(os.path.join("../home", "*"))
-    filelist_output = glob.glob(os.path.join("../results", "*"))
+    filelist_input = glob.glob(os.path.join("./sketches", "*"))
+    filelist_output = glob.glob(os.path.join("./results", "*"))
     inputs = []
     outputs = []
     for file_input, file_output in zip(sorted(filelist_input), sorted(filelist_output)):
@@ -20,7 +18,6 @@ def process():
         inputs += [vectorized_picture_input]
         outputs += [vectorized_picture_output]
         # print(vectorized_picture_input[60])
-        print(i)
         i += 1
-        if i > 10:
+        if i > 8:
             return np.asarray(inputs), np.asarray(outputs)
