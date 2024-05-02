@@ -6,11 +6,12 @@ from imageio import imread
 
 def process():
     i = 0
-    filelist_input = glob.glob(os.path.join("./sketches", "*"))
-    filelist_output = glob.glob(os.path.join("./results", "*"))
+    filelist_input = glob.glob(os.path.join("code/results", "*"))
+    filelist_output = glob.glob(os.path.join("code/sketches", "*"))
     inputs = []
     outputs = []
     for file_input, file_output in zip(sorted(filelist_input), sorted(filelist_output)):
+        print(i)
         # do some fancy stuff
         # print str(infile)
         vectorized_picture_input = np.array(imread(file_input)) / 255

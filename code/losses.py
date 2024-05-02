@@ -1,6 +1,7 @@
 import tensorflow as tf
 
 
+#Useful resource: https://cvnote.ddlee.cc/2019/09/12/psnr-ssim-python
 def distance_loss(generated_image, real_image):
     return tf.reduce_sum(real_image - generated_image)
 
