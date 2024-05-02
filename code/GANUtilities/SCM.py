@@ -37,16 +37,17 @@ class SCM_decoder(tf.keras.layers.Layer):
         # TODO: ISSUE: THIS IS NOT CONVERTING BACK TO APPROPRIATE SIZE
         self.decoder = tf.keras.Sequential(
             [
-                tf.keras.layers.ZeroPadding2D(padding=(1, 1)),
-                tf.keras.layers.Conv2DTranspose(128, 4, strides=2, padding="valid"),
+                tf.keras.layers.Conv2DTranspose(256, 2, strides=2, padding="valid"),
+                # tf.keras.layers.Conv2DTranspose(256, 2, strides=2, padding="valid"),
+                # tf.keras.layers.ZeroPadding2D(padding=(1, 1)),
+                tf.keras.layers.Conv2DTranspose(128, 4, strides=2, padding="same"),
                 tf.keras.layers.GroupNormalization(groups=-1),
                 tf.keras.layers.ReLU(),
-                tf.keras.layers.ZeroPadding2D(padding=(1, 1)),
-                tf.keras.layers.Conv2DTranspose(64, 4, strides=2, padding="valid"),
+                tf.keras.layers.Conv2DTranspose(64, 4, strides=2, padding="same"),
                 tf.keras.layers.GroupNormalization(groups=-1),
                 tf.keras.layers.ReLU(),
-                ReflectionPad2D(3, 3),
-                tf.keras.layers.Conv2D(3, 7, padding="valid"),
+                # ReflectionPad2D(3, 3),
+                tf.keras.layers.Conv2D(3, 7, padding="same"),
             ]
         )
 
