@@ -3,12 +3,12 @@ import tensorflow as tf
 
 # https://www.tensorflow.org/api_docs/python/tf/image/psnr
 def SSIM(generated_image, real_image):
-    return tf.image.ssim(generated_image, real_image, max_val=255)
+    return tf.image.ssim(generated_image, real_image, max_val=1)
 
 
 # https://www.tensorflow.org/api_docs/python/tf/image/ssim
 def PSNR(generated_image, real_image):
-    return tf.image.psnr(generated_image, real_image, max_val=255)
+    return tf.image.psnr(generated_image, real_image, max_val=1)
 
 
 # Found this implementation of FID

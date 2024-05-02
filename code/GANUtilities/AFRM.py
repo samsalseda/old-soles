@@ -14,7 +14,7 @@ class AFRM(tf.keras.layers.Layer):
 
         num_layers = int(np.log2(self.height / 16 / 2))
 
-        print(f"layers: {num_layers}")
+        #print(f"layers: {num_layers}")
 
         encoder_layers = [tf.keras.layers.Identity()]
 
@@ -70,8 +70,8 @@ class AFRM(tf.keras.layers.Layer):
         output = x
         output = self.encoder(output)
 
-        print(f"x: {x.shape}")
-        print(f"output: {output.shape}")
+        #print(f"x: {x.shape}")
+        #print(f"output: {output.shape}")
 
         split_output = tf.reshape(
             tf.concat(tf.split(output, self.num_splits, axis=2), axis=0),
@@ -139,23 +139,23 @@ class AFRM(tf.keras.layers.Layer):
             else:
                 rvs_output = tf.concat([rvs_output, lstm_output], axis=3)
 
-        print(fwd_output.shape)
-        print(rvs_output.shape)
+        #print(fwd_output.shape)
+        #print(rvs_output.shape)
 
         reshaped_input = tf.transpose(
             tf.concat([fwd_output, rvs_output], 1), [0, 2, 3, 1]
         )
-        print(reshaped_input.shape)
+        #print(reshaped_input.shape)
         output = self.conv_output(reshaped_input)
-        print(output.shape)
+        #print(output.shape)
         output = self.decoder(output)
-        print(output.shape)
+        #print(output.shape)
 
         output = self.gamma * output + x
 
-        print("finished call!")
-        print()
-        print()
-        print()
+        #print("finished call!")
+        #print()
+        #print()
+        #print()
 
         return output

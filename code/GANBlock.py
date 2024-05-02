@@ -95,7 +95,7 @@ class Discriminator(tf.keras.layers.Layer):
         )
 
     def call(self, inputs):
-        print(f"inputs shape: {inputs.shape}")
+        #print(f"inputs shape: {inputs.shape}")
         return self.full_discriminaor(inputs)
 
 

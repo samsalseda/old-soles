@@ -2,7 +2,7 @@ import tensorflow as tf
 
 
 def distance_loss(generated_image, real_image):
-    return tf.reduce_sum(real_image - generated_image)
+    return tf.reduce_sum(tf.pow(real_image - generated_image, 2))
 
 
 def adversarial_loss(disc_output_generated, disc_output_real):
@@ -16,7 +16,7 @@ def adversarial_loss(disc_output_generated, disc_output_real):
 def style_loss(generated_image, real_image):
     gram_x = tf.matmul(generated_image, generated_image, transpose_a=True)
     gram_y = tf.matmul(real_image, real_image, transpose_a=True)
-    return tf.reduce_sum(gram_y - gram_x)
+    return tf.reduce_sum(tf.pow(gram_y - gram_x, 2))
 
 
 # def perceptual_loss():

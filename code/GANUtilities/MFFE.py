@@ -28,12 +28,12 @@ class MFFEBlock(tf.keras.layers.Layer):
         self.middle = tf.keras.Sequential([*blocks])
 
     def call(self, x):
-        print(x.shape)
+        #print(x.shape)
         encoder_output = self.encoder(x)
         afrm_output = self.AFRM(encoder_output)
-        print(f"afrm shape: {afrm_output.shape}")
+        #print(f"afrm shape: {afrm_output.shape}")
         middle_output = self.middle(afrm_output)
-        print(f"middle shape: {middle_output.shape}")
+        #print(f"middle shape: {middle_output.shape}")
         decoder_output = self.decoder(middle_output)
-        print(f"decoder shape: {decoder_output.shape}")
+        #print(f"decoder shape: {decoder_output.shape}")
         return decoder_output

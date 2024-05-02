@@ -4,6 +4,7 @@ import numpy as np
 from GANBlock import Generator, Discriminator
 from preprocess_temp import process
 from losses import total_loss
+from metrics import SSIM, PSNR
 
 
 def parse_args(args=None):
@@ -71,7 +72,8 @@ class ShoeGenerationModel(tf.keras.Model):
     def __init__(self, generators, discriminators, **kwargs):
         super().__init__(**kwargs)
         self.generators, self.discriminators = generators, discriminators
-        self.optimizer = tf.keras.optimizers.Adam()
+        self.optimizer = tf.keras.optimizers.Adam(0.00005)
+        self.metric_list = [SSIM, PSNR]
         # TODO: convert parameters to lists, for multile GAN blocks to iterate thorugh
 
     @tf.function
@@ -87,7 +89,7 @@ class ShoeGenerationModel(tf.keras.Model):
             )
 
             generated_images = generator(input_images)
-            print(f"generated images shape: {generated_images.shape}")
+            #print(f"generated images shape: {generated_images.shape}")
 
             gen_outputs += [generated_images]
             disc_outputs += [discriminator(generated_images)]
@@ -109,9 +111,9 @@ class ShoeGenerationModel(tf.keras.Model):
         """
         self.optimizer = optimizer
         self.loss = loss
-        self.metrics = metrics
+        self.metric_list = metrics
 
-    def train(self, real_images, sketch_images, batch_size=4, epochs=2):
+    def train(self, real_images, sketch_images, batch_size=5, epochs=10):
         """
         Runs through all Epochs and trains
         """
@@ -139,7 +141,7 @@ class ShoeGenerationModel(tf.keras.Model):
                     gen_outputs, disc_outputs, real_images_resized = self.call(
                         batch_sketch_images, batch_real_images
                     )
-                    losses = []
+                    summed_losses = 0
                     metrics_2d = []
                     for gen_output, disc_output, real_image, discriminator in zip(
                         gen_outputs,
@@ -147,40 +149,37 @@ class ShoeGenerationModel(tf.keras.Model):
                         real_images_resized,
                         self.discriminators,
                     ):
-                        print(gen_output.shape)
-                        print(real_image.shape)
-                        losses += [
-                            total_loss(
+                        #print(gen_output.shape)
+                        #print(real_image.shape)
+                        summed_losses += total_loss(
                                 gen_output,
                                 real_image,
                                 disc_output,
                                 discriminator(
-                                    batch_real_images
+                                    real_image
                                 ),  # TODO: THIS line of discriminator(batch_real_imgages) IS AN ERROR. IT SHOULD BE THE BATCH OF RESIZED IMAGES
                             )
-                        ]
+                        
                         metrics = []
-                        for metric in self.metrics:
+                        for metric in self.metric_list:
                             metrics += [
                                 metric(gen_output, real_image)
                             ]  ## TODO: ADJUST params as needed
                         metrics_2d += [metrics]
                     metrics_2d = np.asarray(metrics_2d)
 
-                for loss in losses:
-                    gradients = tape.gradient(loss, self.trainable_variables)
-                    self.optimizer.apply_gradients(
-                        zip(gradients, self.trainable_variables)
-                    )
+                
+                gradients = tape.gradient(summed_losses, self.trainable_variables)
+                self.optimizer.apply_gradients(
+                    zip(gradients, self.trainable_variables)
+                )
 
-                last_losses += loss
-                avg_loss = float(last_losses / (start - end))
+                avg_loss = float(summed_losses / (start - end))
                 avg_metrics = metrics_2d / (start - end)
 
-                print(
-                    f"\r[Epoch: {e} \t Batch Index: {index+1}/{num_batches}]\t batch_loss={avg_loss:.3f}\t batch_metrics: {avg_metrics:.3f}\t",
-                    end="",
-                )
+                print(f"\r[Epoch: {e} \t Batch Index: {index+1}/{num_batches}]\t batch_loss={avg_loss:.3f}\t batch_metrics: ",
+                    end="",)
+                #print(avg_metrics)
 
         return avg_loss, avg_metrics
 
@@ -197,7 +196,7 @@ class ShoeGenerationModel(tf.keras.Model):
         output = self.discriminator(self.generator(sketch_images))
         loss = self.loss(output, real_images)  # TODO: ADD PARAMS like in losses.py file
         metrics = []
-        for metric in self.metrics:
+        for metric in self.metric_list:
             metrics += [metric(output, real_images)]  ## TODO: ADJUST params as needed
         np.asarray(metrics)
 
