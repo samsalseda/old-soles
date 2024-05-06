@@ -44,9 +44,8 @@ def main(args):
     # TODO: train using the preprocessed image stuff
     # TODO: test using the preprocessed image stuff
 
-    sketches, real = process()
-    sketches = tf.convert_to_tensor(sketches, dtype=tf.float64)
-    real = tf.convert_to_tensor(real, dtype=tf.float64)
+    sketches = np.load("code/input_images_train.npy")
+    real = np.load("code/target_images_train.npy")
 
     generators = []
     discriminators = []
