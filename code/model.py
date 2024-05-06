@@ -5,6 +5,7 @@ from GANBlock import Generator, Discriminator
 from preprocess_temp import process
 from losses import total_loss, adversarial_loss
 from metrics import SSIM, PSNR
+import matplotlib.pyplot as plt
 from SaveImage import save_image
 
 
@@ -149,6 +150,8 @@ class ShoeGenerationModel(tf.keras.Model):
         """
         Runs through all Epochs and trains
         """
+        epochs_np = np.array([list(range(epochs))])
+        losses_np = np.array([])
         for e in range(epochs):
             avg_loss = 0
             avg_acc = 0
@@ -215,6 +218,7 @@ class ShoeGenerationModel(tf.keras.Model):
                 for disc in self.discriminators:
                     disc_train_vars += disc.trainable_variables
                 gradients = disc_tape.gradient(discriminator_losses, disc_train_vars)
+
                 #print(gradients)
                 self.disc_optimizer.apply_gradients(
                     zip(gradients, disc_train_vars)
@@ -225,8 +229,18 @@ class ShoeGenerationModel(tf.keras.Model):
 
                 print(f"\r[Epoch: {e} \t Batch Index: {index+1}/{num_batches}]\t batch_loss={avg_loss:.3f}\t batch_metrics: ",
                     end="",)
+                
                 #print(avg_metrics)
+                
+                losses_np = np.append(losses_np, avg_loss)
+                #print("losses_np: " + str(losses_np))
 
+        print(losses_np)
+        print(epochs_np)
+        plt.plot(epochs_np.reshape(-1),losses_np)
+        plt.xlabel("epochs")
+        plt.ylabel("loss")
+        plt.show()
         return avg_loss, avg_metrics
 
     def test(self, real_images, sketch_images):
