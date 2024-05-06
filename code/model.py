@@ -3,8 +3,9 @@ import tensorflow as tf
 import numpy as np
 from GANBlock import Generator, Discriminator
 from preprocess_temp import process
-from losses import total_loss
+from losses import total_loss, adversarial_loss
 from metrics import SSIM, PSNR
+from SaveImage import save_image
 
 
 def parse_args(args=None):
@@ -26,6 +27,13 @@ def parse_args(args=None):
         default=4,
         help="number of GAN Blocks in the model",
     )
+    parser.add_argument(
+        "--num_epochs",
+        type=int,
+        default=10,
+        help="number of epochs over which to train the model",
+    )
+
     if args is None:
         return parser.parse_args()  ## For calling through command line
     return parser.parse_args(args)  ## For calling through notebook.
@@ -61,10 +69,16 @@ def main(args):
 
     model = ShoeGenerationModel(generators, discriminators)
 
-    loss, metrics = model.train(sketches, real)
+    train_loss, train_metrics = model.train(sketches, real, epochs=args.num_epochs)
 
-    print(f"loss: {loss}")
-    print(f"accuracy: {metrics}")
+    print(f"\ntrain_loss: {train_loss}")
+    #print(f"accuracy: {metrics}")
+
+    model.test(real, sketches)
+    #print(f"\ntest_loss: {test_loss}")
+    #print(f"accuracy: {metrics}")
+
+    #model.predict(sketches)
 
 
 class ShoeGenerationModel(tf.keras.Model):
@@ -77,33 +91,48 @@ class ShoeGenerationModel(tf.keras.Model):
         # TODO: convert parameters to lists, for multile GAN blocks to iterate thorugh
 
     @tf.function
-    def call(self, sketch_images, real_images):
+    def call(self, sketch_images, real_images, is_training=True):
         height, width = self.generators[0].height, self.generators[0].width
         input_images = tf.image.resize(sketch_images, [int(height), int(width)])
 
-        disc_outputs, gen_outputs, real_images_resized = [], [], []
+        disc_outputs, gen_outputs, real_images_resized, disc_outputs_real = [], [], [], []
 
+        gen_num = 0
         for generator, discriminator in zip(self.generators, self.discriminators):
             resizing_layer = tf.keras.layers.Resizing(
                 int(generator.height * 2), int(generator.width * 2)
             )
 
+            # print(generator.height)
+            # print(generator.width)
+
             generated_images = generator(input_images)
-            #print(f"generated images shape: {generated_images.shape}")
+
+            # if not is_training:
+            #     for i in range(len(generated_images)):
+            #         sess = tf.Session()
+            #         with sess.as_default():
+            #             img_array = generated_images[i].eval()
+            #         save_image(img_array, f"layer {gen_num}, image {i}")
+            #     gen_num += 1
+            #     print(f"generated images shape: {generated_images.shape}")
 
             gen_outputs += [generated_images]
+            #print(f"generator shape: {generated_images.shape}")
             disc_outputs += [discriminator(generated_images)]
             resizing_layer_images = tf.keras.layers.Resizing(
                 int(generator.height), int(generator.width)
             )
             upsampled_real = resizing_layer_images(real_images)
+            #print(upsampled_real.shape)
             real_images_resized += [upsampled_real]
+            disc_outputs_real += [discriminator(upsampled_real)]
 
             generated_images = resizing_layer(generated_images)
             upsampled_sketch = resizing_layer(sketch_images)
             input_images = tf.concat([upsampled_sketch, generated_images], axis=-1)
 
-        return gen_outputs, disc_outputs, real_images_resized
+        return gen_outputs, disc_outputs, real_images_resized, disc_outputs_real
 
     def compile(self, optimizer, loss, metrics):
         """
@@ -125,10 +154,10 @@ class ShoeGenerationModel(tf.keras.Model):
             last_losses = 0
             avg_metrics = avg_acc = avg_loss = 0
 
-            indicies_unshuffled = tf.range(len(sketch_images))
-            indicies = tf.random.shuffle(indicies_unshuffled)
-            train_real_images_shuffled = tf.gather(real_images, indicies)
-            train_sketch_images_shuffled = tf.gather(sketch_images, indicies)
+            indices_unshuffled = tf.range(len(sketch_images))
+            indices = tf.random.shuffle(indices_unshuffled)
+            train_real_images_shuffled = tf.gather(real_images, indices)
+            train_sketch_images_shuffled = tf.gather(sketch_images, indices)
 
             for index, end in enumerate(
                 range(batch_size, len(real_images) + 1, batch_size)
@@ -137,28 +166,30 @@ class ShoeGenerationModel(tf.keras.Model):
                 batch_sketch_images = train_sketch_images_shuffled[start:end, :]
                 batch_real_images = train_real_images_shuffled[start:end, :]
 
-                with tf.GradientTape() as tape:
-                    gen_outputs, disc_outputs, real_images_resized = self.call(
+                with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+                    gen_outputs, disc_outputs, real_images_resized, disc_outputs_real = self.call(
                         batch_sketch_images, batch_real_images
                     )
-                    summed_losses = 0
+                    generator_losses = 0
+                    discriminator_losses = 0
                     metrics_2d = []
-                    for gen_output, disc_output, real_image, discriminator in zip(
+
+                    for gen_output, disc_output, real_image, disc_output_real in zip(
                         gen_outputs,
                         disc_outputs,
                         real_images_resized,
-                        self.discriminators,
+                        disc_outputs_real,
                     ):
                         #print(gen_output.shape)
                         #print(real_image.shape)
-                        summed_losses += total_loss(
+                        generator_losses += total_loss(
                                 gen_output,
                                 real_image,
                                 disc_output,
-                                discriminator(
-                                    real_image
-                                ),  # TODO: THIS line of discriminator(batch_real_imgages) IS AN ERROR. IT SHOULD BE THE BATCH OF RESIZED IMAGES
+                                disc_output_real,  # TODO: THIS line of discriminator(batch_real_imgages) IS AN ERROR. IT SHOULD BE THE BATCH OF RESIZED IMAGES
                             )
+                        
+                        discriminator_losses += adversarial_loss(disc_output, disc_output_real, True)
                         
                         metrics = []
                         for metric in self.metric_list:
@@ -169,12 +200,19 @@ class ShoeGenerationModel(tf.keras.Model):
                     metrics_2d = np.asarray(metrics_2d)
 
                 
-                gradients = tape.gradient(summed_losses, self.trainable_variables)
+                gradients = gen_tape.gradient(generator_losses, self.trainable_variables)
+                #print(gradients)
                 self.optimizer.apply_gradients(
                     zip(gradients, self.trainable_variables)
                 )
 
-                avg_loss = float(summed_losses / (start - end))
+                gradients = disc_tape.gradient(discriminator_losses, self.trainable_variables)
+                #print(gradients)
+                self.optimizer.apply_gradients(
+                    zip(gradients, self.trainable_variables)
+                )
+
+                avg_loss = float(generator_losses / (start - end))
                 avg_metrics = metrics_2d / (start - end)
 
                 print(f"\r[Epoch: {e} \t Batch Index: {index+1}/{num_batches}]\t batch_loss={avg_loss:.3f}\t batch_metrics: ",
@@ -187,29 +225,48 @@ class ShoeGenerationModel(tf.keras.Model):
         """
         Runs through all Epochs and trains
         """
-        avg_loss = 0
+        avg_gen_loss = avg_disc_loss = 0
         avg_acc = 0
 
-        total_loss = 0
+        generator_losses = discriminator_losses = 0
         num_examples = len(real_images)
 
-        output = self.discriminator(self.generator(sketch_images))
-        loss = self.loss(output, real_images)  # TODO: ADD PARAMS like in losses.py file
-        metrics = []
-        for metric in self.metric_list:
-            metrics += [metric(output, real_images)]  ## TODO: ADJUST params as needed
-        np.asarray(metrics)
+        metrics_2d = []
 
-        total_loss += loss
-        avg_loss = float(total_loss / num_examples)
-        avg_metrics = float(metrics / num_examples)
+        gen_outputs, disc_outputs, real_images_resized, disc_outputs_real = self.call(sketch_images, real_images, is_training=False)
+        for gen_output, disc_output, real_image, disc_output_real in zip(
+                        gen_outputs,
+                        disc_outputs,
+                        real_images_resized,
+                        disc_outputs_real,
+                    ):
+            generator_losses += total_loss(
+                                gen_output,
+                                real_image,
+                                disc_output,
+                                disc_output_real,  # TODO: THIS line of discriminator(batch_real_imgages) IS AN ERROR. IT SHOULD BE THE BATCH OF RESIZED IMAGES
+                            )
+                        
+            discriminator_losses += adversarial_loss(disc_output, disc_output_real, True)
+            
+            metrics = []
+            for metric in self.metric_list:
+                metrics += [
+                    metric(gen_output, real_image)
+                ]  ## TODO: ADJUST params as needed
+            metrics_2d += [metrics]
+        metrics_2d = np.asarray(metrics_2d)
+
+        avg_gen_loss = float(generator_losses / num_examples)
+        avg_disc_loss = float(discriminator_losses/ num_examples)
+        #avg_metrics = float(metrics_2d / num_examples)
 
         print(
-            f"\r[Testing: loss={avg_loss:.3f}\t metrics: {avg_acc:.3f}\t",
+            f"\r[Testing: gen_loss={avg_gen_loss:.3f}\t disc_loss={avg_disc_loss:.3f}\t metrics: {avg_acc:.3f}\t",
             end="",
         )
 
-        return avg_loss, avg_metrics
+        return avg_gen_loss, avg_disc_loss#, avg_metrics
 
     # def get_config(self):
     #     base_config = super().get_config()
