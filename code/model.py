@@ -44,8 +44,8 @@ def main(args):
     # TODO: train using the preprocessed image stuff
     # TODO: test using the preprocessed image stuff
 
-    sketches = np.load("code/input_images_train.npy")
-    real = np.load("code/target_images_train.npy")
+    sketches = np.load("/Users/jakelippert/DL/old-soles/code/input_images_train.npy")
+    real = np.load("/Users/jakelippert/DL/old-soles/code/target_images_train.npy")
 
     generators = []
     discriminators = []
@@ -85,7 +85,8 @@ class ShoeGenerationModel(tf.keras.Model):
     def __init__(self, generators, discriminators, **kwargs):
         super().__init__(**kwargs)
         self.generators, self.discriminators = generators, discriminators
-        self.optimizer = tf.keras.optimizers.Adam(0.00005)
+        self.gen_optimizer = tf.keras.optimizers.Adam(0.00005)
+        self.disc_optimizer = tf.keras.optimizers.Adam(0.00005)
         self.metric_list = [SSIM, PSNR]
         # TODO: convert parameters to lists, for multile GAN blocks to iterate thorugh
 
@@ -107,14 +108,16 @@ class ShoeGenerationModel(tf.keras.Model):
 
             generated_images = generator(input_images)
 
-            # if not is_training:
-            #     for i in range(len(generated_images)):
-            #         sess = tf.Session()
-            #         with sess.as_default():
-            #             img_array = generated_images[i].eval()
-            #         save_image(img_array, f"layer {gen_num}, image {i}")
-            #     gen_num += 1
-            #     print(f"generated images shape: {generated_images.shape}")
+            if is_training:
+                for i in range(len(generated_images)):
+                    img_array = generated_images[i]
+                    #save_image(tf.make_ndarray(tf.make_tensor_proto(img_array)), f"layer {gen_num}, image {i}")
+                    # img_array = img_array.eval(session=tf.compat.v1.Session())
+                    # save_image(img_array, f"layer {gen_num}, image {i}")
+                    # tf.keras.utils.save_img(f"layer {gen_num}, image {i}", img_array)
+                        
+                gen_num += 1
+                print(f"generated images shape: {generated_images.shape}")
 
             gen_outputs += [generated_images]
             #print(f"generator shape: {generated_images.shape}")
@@ -137,7 +140,8 @@ class ShoeGenerationModel(tf.keras.Model):
         """
         Create a facade to mimic normal keras fit routine
         """
-        self.optimizer = optimizer
+        self.gen_optimizer = tf.keras.optimizers.Adam(0.00005)
+        self.disc_optimizer = tf.keras.optimizers.Adam(0.00005)
         self.loss = loss
         self.metric_list = metrics
 
@@ -198,21 +202,26 @@ class ShoeGenerationModel(tf.keras.Model):
                         metrics_2d += [metrics]
                     metrics_2d = np.asarray(metrics_2d)
 
-                
-                gradients = gen_tape.gradient(generator_losses, self.trainable_variables)
+                gen_train_vars = []
+                for gen in self.generators:
+                    gen_train_vars += gen.trainable_variables
+                gradients = gen_tape.gradient(generator_losses, gen_train_vars)
                 #print(gradients)
-                self.optimizer.apply_gradients(
-                    zip(gradients, self.trainable_variables)
+                self.gen_optimizer.apply_gradients(
+                    zip(gradients, gen_train_vars)
                 )
 
-                gradients = disc_tape.gradient(discriminator_losses, self.trainable_variables)
+                disc_train_vars = []
+                for disc in self.discriminators:
+                    disc_train_vars += disc.trainable_variables
+                gradients = disc_tape.gradient(discriminator_losses, disc_train_vars)
                 #print(gradients)
-                self.optimizer.apply_gradients(
-                    zip(gradients, self.trainable_variables)
+                self.disc_optimizer.apply_gradients(
+                    zip(gradients, disc_train_vars)
                 )
 
-                avg_loss = float(generator_losses / (start - end))
-                avg_metrics = metrics_2d / (start - end)
+                avg_loss = float(generator_losses / batch_size)
+                avg_metrics = float(metrics_2d / batch_size)
 
                 print(f"\r[Epoch: {e} \t Batch Index: {index+1}/{num_batches}]\t batch_loss={avg_loss:.3f}\t batch_metrics: ",
                     end="",)
