@@ -9,6 +9,6 @@ def save_image(img_array:np.array, name:str):
     img = Image.fromarray(img_array*255, 'RGB')
     img.save(output_dir + name + ".png", 'PNG')
 
-if __name__ == "__main__":
-    inputs, outputs = process()
-    save_image(np.asarray(inputs[0]), "testing")
+# if __name__ == "__main__":
+#     inputs, outputs = process()
+#     save_image(np.asarray(inputs[0]), "testing")
