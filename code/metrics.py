@@ -3,11 +3,18 @@ import tensorflow as tf
 
 # https://www.tensorflow.org/api_docs/python/tf/image/psnr
 def SSIM(generated_image, real_image):
+    """
+    Returns the structural similarity index measure of the generated image with respect
+    to the real image. 
+    """
     return tf.image.ssim(generated_image, real_image, max_val=1)
 
 
 # https://www.tensorflow.org/api_docs/python/tf/image/ssim
 def PSNR(generated_image, real_image):
+    """
+    Returns the peak signal to noise ratio between the generated image and the real image.
+    """
     return tf.image.psnr(generated_image, real_image, max_val=1)
 
 
