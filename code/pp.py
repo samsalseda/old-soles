@@ -73,16 +73,17 @@ class LoadMyDataset(tf.keras.utils.Sequence):
         name = self.input_list[index]
         return os.path.basename(name)
 
-# Example usage:
-edge_path = "data/images"
-img_path = "data/sketches"
-im_size = 256
-train_dataset = LoadMyDataset(edge_path, img_path, im_size=im_size, train=True)
+if __name__ == "__main__":
+    # Example usage:
+    edge_path = "data/images"
+    img_path = "data/sketches"
+    im_size = 256
+    train_dataset = LoadMyDataset(edge_path, img_path, im_size=im_size, train=True)
 
-test_dataset = LoadMyDataset(edge_path, img_path, im_size=im_size, train=False)
+    test_dataset = LoadMyDataset(edge_path, img_path, im_size=im_size, train=False)
 
-# Randomize the order of training samples
-random.shuffle(train_dataset.input_list)
+    # Randomize the order of training samples
+    random.shuffle(train_dataset.input_list)
 
 
 # Loading the first 35,000 images for training
@@ -96,17 +97,18 @@ for i in tqdm(range(0, 1000), desc="Loading Training Images"):
         print(f"Failed to load images for file: {train_dataset.load_name(i)}")
         print(f"Error: {e}")
 
-# Stack the input and target images into tensors for training
-input_images_train = tf.stack(input_images_train)
-np.save('data/input_images_train.npy', input_images_train.numpy())
-del input_images_train
+    # Stack the input and target images into tensors for training
+    input_images_train = tf.stack(input_images_train)
+    np.save('data/input_images_train.npy', input_images_train.numpy())
+    del input_images_train
 
-target_images_train = tf.stack(target_images_train)
-np.save('data/target_images_train.npy', target_images_train.numpy())
+    target_images_train = tf.stack(target_images_train)
+    np.save('data/target_images_train.npy', target_images_train.numpy())
 
 
-del target_images_train
-del train_dataset
+    del target_images_train
+    del train_dataset
+
 
 
 
@@ -123,23 +125,23 @@ for i in tqdm(range(15000, 15024), desc="Loading Testing Images"):
 
 
 
-# Stack the input and target images into tensors for testing
-input_images_test = tf.stack(input_images_test)
-np.save('data/input_images_test.npy', input_images_test.numpy())
-del input_images_test
+    # Stack the input and target images into tensors for testing
+    input_images_test = tf.stack(input_images_test)
+    np.save('data/input_images_test.npy', input_images_test.numpy())
+    del input_images_test
 
 
-target_images_test = tf.stack(target_images_test)
-np.save('data/target_images_test.npy', target_images_test.numpy())
+    target_images_test = tf.stack(target_images_test)
+    np.save('data/target_images_test.npy', target_images_test.numpy())
 
-del target_images_test
-del test_dataset
-# Save input_images_train, target_images_train, input_images_test, and target_images_test as NumPy arrays
-
-
+    del target_images_test
+    del test_dataset
+    # Save input_images_train, target_images_train, input_images_test, and target_images_test as NumPy arrays
 
 
-print("done-sies")
+
+
+    print("done-sies")
 
 # # Display the first 5 images from the loaded dataset
 # num_images_to_display = 5

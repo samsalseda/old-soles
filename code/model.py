@@ -11,7 +11,6 @@ from keras.saving import register_keras_serializable
 from tqdm import tqdm
 
 
-
 def parse_args(args=None):
     """
     Perform command-line argument parsing (other otherwise parse arguments with defaults).
@@ -98,7 +97,8 @@ class ShoeGenerationModel(tf.keras.Model):
     def __init__(self, generators, discriminators, **kwargs):
         super().__init__(**kwargs)
         self.generators, self.discriminators = generators, discriminators
-        self.optimizer = tf.keras.optimizers.Adam(0.00005)
+        self.gen_optimizer = tf.keras.optimizers.Adam(0.00005)
+        self.disc_optimizer = tf.keras.optimizers.Adam(0.00005)
         self.metric_list = [SSIM, PSNR]
         # TODO: convert parameters to lists, for multile GAN blocks to iterate thorugh
 
@@ -130,6 +130,17 @@ class ShoeGenerationModel(tf.keras.Model):
             # print(generator.width)
 
             generated_images = generator(input_images)
+
+            if is_training:
+                for i in range(len(generated_images)):
+                    img_array = generated_images[i]
+                    #save_image(tf.make_ndarray(tf.make_tensor_proto(img_array)), f"layer {gen_num}, image {i}")
+                    # img_array = img_array.eval(session=tf.compat.v1.Session())
+                    # save_image(img_array, f"layer {gen_num}, image {i}")
+                    # tf.keras.utils.save_img(f"layer {gen_num}, image {i}", img_array)
+                        
+                gen_num += 1
+                print(f"generated images shape: {generated_images.shape}")
 
             gen_outputs += [generated_images]
             #print(f"generator shape: {generated_images.shape}")
@@ -170,7 +181,8 @@ class ShoeGenerationModel(tf.keras.Model):
         """
         Create a facade to mimic normal keras fit routine
         """
-        self.optimizer = optimizer
+        self.gen_optimizer = tf.keras.optimizers.Adam(0.00005)
+        self.disc_optimizer = tf.keras.optimizers.Adam(0.00005)
         self.loss = loss
         self.metric_list = metrics
 
@@ -194,6 +206,7 @@ class ShoeGenerationModel(tf.keras.Model):
         Runs through all Epochs and trains
         """
         epochs = 12
+        
         for e in range(epochs):
             print(f"epoch {e + 1} starting")
             avg_loss = 0
