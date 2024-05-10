@@ -3,22 +3,29 @@ import numpy as np
 
 
 class AFRM(tf.keras.layers.Layer):
+    """
     def __init__(self, size=[256, 4, 4], splits=4):
+    def call(self, x):
+    """
+
+    def __init__(self, size=[256, 4, 4], splits=4):
+        """
+        Initializes the AFRM layer.
+
+        :param size: the size of the AFRM, defaults to [255, 4, 4]
+        :param splits: number of splits, defaults to 4
+        """
         super().__init__()
         self.num_channels, self.height, self.width = size
         self.num_splits = splits
 
-        # print(size)
-        # print(self.height/16)
-        # print(np.log2(self.height/16))
-
         num_layers = int(np.log2(self.height / 16 / 2))
-
-        #print(f"layers: {num_layers}")
 
         encoder_layers = [tf.keras.layers.Identity()]
 
-        for i in range(num_layers):
+        for _ in range(
+            num_layers
+        ):  # variable number of layers to account for image size
             encoder_layers.append(tf.keras.layers.ZeroPadding2D(padding=(1, 1)))
             encoder_layers.append(
                 tf.keras.layers.Conv2D(self.num_channels, 4, strides=2)
@@ -30,8 +37,9 @@ class AFRM(tf.keras.layers.Layer):
 
         decoder_layers = [tf.keras.layers.Identity()]
 
-        for i in range(num_layers):
-            # decoder_layers.append(tf.keras.layers.ZeroPadding2D(padding=(1, 1)))
+        for _ in range(
+            num_layers
+        ):  # variable number of layers to account for image size
             decoder_layers.append(
                 tf.keras.layers.Conv2DTranspose(
                     self.num_channels, 2, strides=2, padding="valid"
@@ -42,7 +50,7 @@ class AFRM(tf.keras.layers.Layer):
 
         self.decoder = tf.keras.Sequential(decoder_layers)
 
-        self.lstm_size = int(self.num_channels * 4 * int(4 / splits))  # TODO: remove /8
+        self.lstm_size = int(self.num_channels * 4 * int(4 / splits))
         self.forward_LSTM = tf.keras.layers.LSTM(
             self.lstm_size, return_state=True, return_sequences=True
         )
@@ -66,12 +74,14 @@ class AFRM(tf.keras.layers.Layer):
         self.gamma = tf.Variable(tf.zeros(1))
 
     def call(self, x):
-        batch_size = x.shape[0]
+        """
+        Calls the AFRM layer.
+
+        :param x: input to the layer
+        :return: output from the layer
+        """
         output = x
         output = self.encoder(output)
-
-        #print(f"x: {x.shape}")
-        #print(f"output: {output.shape}")
 
         split_output = tf.reshape(
             tf.concat(tf.split(output, self.num_splits, axis=2), axis=0),
@@ -89,23 +99,15 @@ class AFRM(tf.keras.layers.Layer):
             tf.zeros((split_output[0].shape[0], split_output[0].shape[2])),
             tf.zeros((split_output[0].shape[0], split_output[0].shape[2])),
         ]
-        # tf.zeros((1, batch_size, self.lstm_size)),
-        # tf.zeros((1, batch_size, self.lstm_size))]
         fwd_output = []
 
-        for i in range(self.num_splits):
-            # print(i)
-            # print(split_output[i].shape)
+        for i in range(self.num_splits):  # forward LSTM
             lstm_output, initial_h, initial_c = self.forward_LSTM(
-                # split_output[i], tf.reshape(initial_state, (split_output[i].shape))
                 split_output[i],
                 initial_state=initial_state,
             )
-            # print(initial_c.shape)
-            # print(initial_h.shape)
 
             initial_state = [initial_c, initial_h]
-            # print(f"lstm_output: {lstm_output.shape}")
             lstm_output = tf.reshape(
                 lstm_output,
                 (-1, int(self.num_channels), 4, 1),
@@ -123,7 +125,7 @@ class AFRM(tf.keras.layers.Layer):
 
         rvs_output = []
 
-        for i in range(self.num_splits):
+        for i in range(self.num_splits):  # reverse LSTM
             lstm_output, initial_h, initial_c = self.reverse_LSTM(
                 reversed_split_output[i], initial_state
             )
@@ -139,23 +141,12 @@ class AFRM(tf.keras.layers.Layer):
             else:
                 rvs_output = tf.concat([rvs_output, lstm_output], axis=3)
 
-        #print(fwd_output.shape)
-        #print(rvs_output.shape)
-
         reshaped_input = tf.transpose(
             tf.concat([fwd_output, rvs_output], 1), [0, 2, 3, 1]
         )
-        #print(reshaped_input.shape)
         output = self.conv_output(reshaped_input)
-        #print(output.shape)
         output = self.decoder(output)
-        #print(output.shape)
 
-        output = self.gamma * output + x
-
-        #print("finished call!")
-        #print()
-        #print()
-        #print()
+        output = self.gamma * output + x  # residual
 
         return output

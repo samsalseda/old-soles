@@ -3,8 +3,17 @@ from GANUtilities.ReflectionPad2D import ReflectionPad2D
 
 
 class ResidualBlock(tf.keras.layers.Layer):
+    """
+    def __init__(self, size):
+    def call(self, inputs):
+    """
 
     def __init__(self, input_size):
+        """
+        Initializes the resnet layer.
+
+        :param input_size: the size of the model image input
+        """
         super().__init__()
         self.input_size = input_size
         self.conv_block = tf.keras.Sequential(
@@ -36,4 +45,10 @@ class ResidualBlock(tf.keras.layers.Layer):
         )
 
     def call(self, inputs):
+        """
+        Calls the resnet layer.
+
+        :param x: input to the layer
+        :return: output from the layer
+        """
         return inputs + self.conv_block(inputs)

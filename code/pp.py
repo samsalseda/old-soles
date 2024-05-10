@@ -7,6 +7,7 @@ from PIL import Image
 from tqdm import tqdm
 import random
 
+
 def load_and_preprocess_image(path, im_size):
     # Load the image from disk
     img = tf.io.read_file(path)
@@ -18,13 +19,16 @@ def load_and_preprocess_image(path, im_size):
     img = tf.image.resize(img, (im_size, im_size))
     return img
 
+
 class LoadMyDataset(tf.keras.utils.Sequence):
     def __init__(self, edge_path, img_path, im_size=256, train=True):
         self.input_path = edge_path
         self.target_path = img_path
         self.im_size = 256
-        self.input_list = [f for f in os.listdir(self.input_path) if f.endswith('.jpg')]
-        self.target_list = [f for f in os.listdir(self.target_path) if f.endswith('.jpg')]
+        self.input_list = [f for f in os.listdir(self.input_path) if f.endswith(".jpg")]
+        self.target_list = [
+            f for f in os.listdir(self.target_path) if f.endswith(".jpg")
+        ]
 
         if train:
             self.transform = self.preprocess_train_image
@@ -51,19 +55,21 @@ class LoadMyDataset(tf.keras.utils.Sequence):
     def __getitem__(self, item):
         input_name = self.input_list[item]
         target_name = self.target_list[item]
-        
+
         input_path = os.path.join(self.input_path, input_name)
         target_path = os.path.join(self.target_path, target_name)
-        
+
         input_image = load_and_preprocess_image(input_path, self.im_size)
         target_image = load_and_preprocess_image(target_path, self.im_size)
-        
+
         # print("Values of variables:")
         # print("input_image shape:", input_name)
         # print("input_image shape:", input_image.shape)
         # print("target_image shape:", target_image.shape)
-        input_image, target_image = self.transform(input_image, target_image, self.im_size)
-        
+        input_image, target_image = self.transform(
+            input_image, target_image, self.im_size
+        )
+
         return input_image, target_image
 
     def __len__(self):
@@ -73,8 +79,8 @@ class LoadMyDataset(tf.keras.utils.Sequence):
         name = self.input_list[index]
         return os.path.basename(name)
 
-if __name__ == "__main__":
-    # Example usage:
+
+if __name__ == "__main__":  # example usage
     edge_path = "data/images"
     img_path = "data/sketches"
     im_size = 256
@@ -99,17 +105,14 @@ for i in tqdm(range(0, 1000), desc="Loading Training Images"):
 
     # Stack the input and target images into tensors for training
     input_images_train = tf.stack(input_images_train)
-    np.save('data/input_images_train.npy', input_images_train.numpy())
+    np.save("data/input_images_train.npy", input_images_train.numpy())
     del input_images_train
 
     target_images_train = tf.stack(target_images_train)
-    np.save('data/target_images_train.npy', target_images_train.numpy())
-
+    np.save("data/target_images_train.npy", target_images_train.numpy())
 
     del target_images_train
     del train_dataset
-
-
 
 
 # Loading the next 15,000 images for testing
@@ -123,23 +126,17 @@ for i in tqdm(range(15000, 15024), desc="Loading Testing Images"):
         print(f"Failed to load images for file: {test_dataset.load_name(i)}")
         print(f"Error: {e}")
 
-
-
     # Stack the input and target images into tensors for testing
     input_images_test = tf.stack(input_images_test)
-    np.save('data/input_images_test.npy', input_images_test.numpy())
+    np.save("data/input_images_test.npy", input_images_test.numpy())
     del input_images_test
 
-
     target_images_test = tf.stack(target_images_test)
-    np.save('data/target_images_test.npy', target_images_test.numpy())
+    np.save("data/target_images_test.npy", target_images_test.numpy())
 
     del target_images_test
     del test_dataset
     # Save input_images_train, target_images_train, input_images_test, and target_images_test as NumPy arrays
-
-
-
 
     print("done-sies")
 

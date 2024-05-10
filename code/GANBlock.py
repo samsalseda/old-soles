@@ -1,25 +1,44 @@
 import tensorflow as tf
-import GANUtilities.Resnet
-import GANUtilities.ReflectionPad2D
 from GANUtilities.MFFE import MFFEBlock
 
 
 class GANBlock(tf.keras.layers.Layer):
+    """
     def __init__(self):
+    def call(self, inputs):
+    """
+
+    def __init__(self):
+        """
+        Initializes a GAN block layer.
+        """
         self.generator = Generator()
         self.discriminator = Discriminator()
 
     def call(self, inputs):
+        """
+        Calls the GAN Block.
 
-        # Need z sampling of inputs
+        :param input: input to the layer
+        :return: output from the layer
+        """
         g = self.generator(inputs)
         d = self.discriminator(g)
         return d
 
 
 class Discriminator(tf.keras.layers.Layer):
+    """
+    def __init__(self, input_size):
+    def call(self, inputs):
+    """
 
     def __init__(self, input_size):
+        """
+        Initializes a GAN block layer.
+
+        :param input_size: size of the input
+        """
         super().__init__()
         self.input_size = input_size
         self.hidden_size = 32
@@ -95,7 +114,12 @@ class Discriminator(tf.keras.layers.Layer):
         )
 
     def call(self, inputs):
-        #print(f"inputs shape: {inputs.shape}")
+        """
+        Calls the GAN discriminator.
+
+        :param inputs: inputs to the layer
+        :return: output from the layer
+        """
         return self.full_discriminaor(inputs)
 
 
@@ -107,65 +131,10 @@ class Generator(tf.keras.layers.Layer):
         self.MFFE = MFFEBlock(size, splits, resnet, block_size)
 
     def call(self, inputs):
-        # May need to add more layers to have CSCM between diffrent generators
+        """
+        Calls the GAN generator.
+
+        :param inputs: inputs to the layer
+        :return: output from the layer
+        """
         return self.MFFE(inputs)
-
-
-# class Generator(tf.keras.layers.Layer):
-
-#     def __init__(self, input_size, resnet=True, block_size=8):
-
-#         blocks = []
-#         if resnet:
-#             for i in range(block_size):
-#                 block = Resnet.ResidualBlock(256)
-#                 blocks.append(block)
-
-#         else:
-#             for i in range(block_size):
-#                 block = tf.keras.layers.Dense(256)
-#                 blocks.append(block)
-
-#         self.middle = tf.keras.Sequential(*blocks)
-
-#         self.encoder = tf.keras.Sequential(
-#             [
-#                 ReflectionPad2D.ReflectionPad2d(),
-#                 tf.keras.layers.SpectralNormalization(tf.keras.layers.Conv2D(
-#                     filters=64, kernel_size=3, strides=(2,2), padding='VALID'
-#                 )),
-#                 tf.keras.layers.GroupNormalization(groups = -1),
-#                 tf.keras.layers.ReLU(),
-
-#                 ReflectionPad2D.ReflectionPad2d(),
-#                 tf.keras.layers.SpectralNormalization(tf.keras.layers.Conv2D(
-#                     filters=128, kernel_size=3, strides=(2,2), padding='VALID'
-#                 )),
-#                 tf.keras.layers.GroupNormalization(groups = -1),
-
-#                 ReflectionPad2D.ReflectionPad2d(),
-#                 tf.keras.layers.SpectralNormalization(tf.keras.layers.Conv2D(
-#                     filters=256, kernel_size=3, strides=(2,2), padding='VALID'
-#                 )),
-#                 tf.keras.layers.GroupNormalization(groups = -1),
-#             ]
-#         )
-
-#         self.decoder = tf.keras.Sequential(
-#             tf.keras.layers.Conv2DTranspose(filters=128, kernel_size=3, strides=(2,2), padding='VALID'),
-#             tf.keras.layers.GroupNormalization(groups=-1),
-#             tf.keras.layers.ReLU(),
-
-#             tf.keras.layers.Conv2DTranspose(filters=128, kernel_size=3, strides=(2,2), padding='VALID'),
-#             tf.keras.layers.GroupNormalization(groups=-1),
-#             tf.keras.layers.ReLU(),
-
-#             ReflectionPad2D.ReflectionPad2d(),
-#             tf.keras.layers.Conv2D(filters=64, kernel_size=7, strides=(2,2), padding='VALID')
-#         )
-
-#     def call(self, inputs):
-#         x = self.encoder(x)
-#         x = self.middle(x)
-#         x = self.decoder(x)
-#         x = tf.math.tanh(x)
