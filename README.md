@@ -8,11 +8,13 @@
 
 [Linked here](https://docs.google.com/document/d/1ti-9ZYgwjS3oaPVPsfPN5xFMnBolydUJ5htayVB_Igk/edit?usp=sharing)
 
-##Link to Final Poster
-[Here](https://docs.google.com/presentation/d/1CeiNsoNMI5c7bvnb_zmtOG2DxtNjfr9eKRAPs7C1UFw/edit?usp=sharing)
+## Link to Final Poster
 
-##Link to Final Writeup
-[Here](https://docs.google.com/document/d/1B4fOqBgstqlYwxEHYLv9faBurxX3hhRyudynHUAf03o/edit?usp=sharing)
+[Linked here](https://docs.google.com/presentation/d/1CeiNsoNMI5c7bvnb_zmtOG2DxtNjfr9eKRAPs7C1UFw/edit?usp=sharing)
+
+## Link to Final Writeup
+
+[Linked here](https://docs.google.com/document/d/1B4fOqBgstqlYwxEHYLv9faBurxX3hhRyudynHUAf03o/edit?usp=sharing)
 
 # GitHub Repo
 
