@@ -24,7 +24,7 @@ class Discriminator(tf.keras.layers.Layer):
         self.input_size = input_size
         self.hidden_size = 32
 
-        leaky_relu_layer = tf.keras.layers.LeakyReLU(alpha=0.5)
+        leaky_relu_layer = tf.keras.layers.LeakyReLU(negative_slope=0.5)
         self.disc1 = tf.keras.Sequential(
             [
                 tf.keras.layers.SpectralNormalization(

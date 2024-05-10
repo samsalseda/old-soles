@@ -2,11 +2,13 @@ import argparse
 import tensorflow as tf
 import numpy as np
 from GANBlock import Generator, Discriminator
-from preprocess_temp import process
 from losses import total_loss, adversarial_loss
 from metrics import SSIM, PSNR
+from PIL import Image
+import os
 import matplotlib.pyplot as plt
-from SaveImage import save_image
+from keras.saving import register_keras_serializable
+from tqdm import tqdm
 
 
 def parse_args(args=None):
@@ -45,8 +47,12 @@ def main(args):
     # TODO: train using the preprocessed image stuff
     # TODO: test using the preprocessed image stuff
 
-    sketches = np.load("/Users/jakelippert/DL/old-soles/code/input_images_train.npy")
-    real = np.load("/Users/jakelippert/DL/old-soles/code/target_images_train.npy")
+    # sketches, real = process()
+    # sketches = tf.convert_to_tensor(sketches, dtype=tf.float64)
+    # real = tf.convert_to_tensor(real, dtype=tf.float64)
+    ### TARGET IS SKETCHES
+    sketches = np.load("target_images_train.npy") / 255
+    real = np.load("input_images_train.npy") / 255
 
     generators = []
     discriminators = []
@@ -72,6 +78,11 @@ def main(args):
     train_loss, train_metrics = model.train(sketches, real, epochs=args.num_epochs)
 
     print(f"\ntrain_loss: {train_loss}")
+
+
+    model.summary()
+    model.production()
+    model.save('my_model.keras')
     #print(f"accuracy: {metrics}")
 
     model.test(real, sketches)
@@ -80,7 +91,7 @@ def main(args):
 
     #model.predict(sketches)
 
-
+@register_keras_serializable()
 class ShoeGenerationModel(tf.keras.Model):
 
     def __init__(self, generators, discriminators, **kwargs):
@@ -91,6 +102,17 @@ class ShoeGenerationModel(tf.keras.Model):
         self.metric_list = [SSIM, PSNR]
         # TODO: convert parameters to lists, for multile GAN blocks to iterate thorugh
 
+    def production(self):
+        sketch_images = np.load("input_images_test.npy") / 255
+        with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+            gen_outputs, disc_outputs, real_images_resized, disc_outputs_real = self.call(
+                        sketch_images, sketch_images
+                    )
+            self.tester(gen_outputs)
+        print("vizzwrde")
+
+
+    
     @tf.function
     def call(self, sketch_images, real_images, is_training=True):
         height, width = self.generators[0].height, self.generators[0].width
@@ -136,6 +158,24 @@ class ShoeGenerationModel(tf.keras.Model):
             input_images = tf.concat([upsampled_sketch, generated_images], axis=-1)
 
         return gen_outputs, disc_outputs, real_images_resized, disc_outputs_real
+    
+    def tester(self, gen_outputs):
+        os.makedirs('generated_images', exist_ok=True)
+        # Access gen_outputs[3] directly
+        generated_image_list = gen_outputs[3]
+
+        # Iterate over each tensor in the list
+        for j in range(len(generated_image_list)):
+            # Normalize the image by scaling it to the range [0, 255]
+            normalized_image = (generated_image_list[j].numpy() * 255.0).astype(np.uint8)
+
+            # Convert the numpy array to PIL Image
+            pil_image = Image.fromarray(normalized_image)
+
+            # Save the PIL Image
+            pil_image.save(f'generated_images/generated_image_3_{j}.png')
+        print("images saved")
+
 
     def compile(self, optimizer, loss, metrics):
         """
@@ -146,15 +186,32 @@ class ShoeGenerationModel(tf.keras.Model):
         self.loss = loss
         self.metric_list = metrics
 
+
+    def visualize_generated_images(self, gen_outputs):
+        os.makedirs("resulting", exist_ok=True)
+        for i in range(gen_outputs.shape[0]):
+            # Normalize the image by scaling it to the range [0, 255]
+            normalized_image = (gen_outputs[i].numpy() * 255.0).astype(np.uint8)
+
+            # Convert the numpy array to PIL Image
+            pil_image = Image.fromarray(normalized_image)
+
+            # Save the image
+            pil_image.save(os.path.join("resulting", f"image_{i}.png"))
+
+        print("Images saved successfully.")
+
     def train(self, real_images, sketch_images, batch_size=5, epochs=10):
         """
         Runs through all Epochs and trains
         """
-        epochs_np = np.array([list(range(epochs))])
-        losses_np = np.array([])
+        epochs = 12
+        
         for e in range(epochs):
+            print(f"epoch {e + 1} starting")
             avg_loss = 0
             avg_acc = 0
+            final_out = None
 
             num_batches = int(len(sketch_images) / batch_size)
             last_losses = 0
@@ -165,82 +222,70 @@ class ShoeGenerationModel(tf.keras.Model):
             train_real_images_shuffled = tf.gather(real_images, indices)
             train_sketch_images_shuffled = tf.gather(sketch_images, indices)
 
-            for index, end in enumerate(
-                range(batch_size, len(real_images) + 1, batch_size)
-            ):
-                start = end - batch_size
-                batch_sketch_images = train_sketch_images_shuffled[start:end, :]
-                batch_real_images = train_real_images_shuffled[start:end, :]
+            with tqdm(total=num_batches, desc=f"Epoch {e+1}") as pbar:
+                for index, end in enumerate(
+                    range(batch_size, len(real_images) + 1, batch_size)
+                ):
+                    start = end - batch_size
+                    batch_sketch_images = train_sketch_images_shuffled[start:end, :]
+                    batch_real_images = train_real_images_shuffled[start:end, :]
 
-                with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-                    gen_outputs, disc_outputs, real_images_resized, disc_outputs_real = self.call(
-                        batch_sketch_images, batch_real_images
+                    with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+                        gen_outputs, disc_outputs, real_images_resized, disc_outputs_real = self.call(
+                            batch_sketch_images, batch_real_images
+                        )
+                        # self.tester(gen_outputs)
+                        generator_losses = 0
+                        discriminator_losses = 0
+                        metrics_2d = []
+
+                        for gen_output, disc_output, real_image, disc_output_real in zip(
+                            gen_outputs,
+                            disc_outputs,
+                            real_images_resized,
+                            disc_outputs_real,
+                        ):
+                            #print(gen_output.shape)
+                            #print(real_image.shape)
+                            generator_losses += total_loss(
+                                    gen_output,
+                                    real_image,
+                                    disc_output,
+                                    disc_output_real,  # TODO: THIS line of discriminator(batch_real_imgages) IS AN ERROR. IT SHOULD BE THE BATCH OF RESIZED IMAGES
+                                )
+                            
+                            discriminator_losses += adversarial_loss(disc_output, disc_output_real, True)
+                            
+                            metrics = []
+                            for metric in self.metric_list:
+                                metrics += [
+                                    metric(gen_output, real_image)
+                                ]  ## TODO: ADJUST params as needed
+                            metrics_2d += [metrics]
+                        metrics_2d = np.asarray(metrics_2d)
+                    # self.tester(gen_outputs)
+
+                    gradients = gen_tape.gradient(generator_losses, self.trainable_variables)
+                    #print(gradients)
+                    self.optimizer.apply_gradients(
+                        zip(gradients, self.trainable_variables)
                     )
-                    generator_losses = 0
-                    discriminator_losses = 0
-                    metrics_2d = []
 
-                    for gen_output, disc_output, real_image, disc_output_real in zip(
-                        gen_outputs,
-                        disc_outputs,
-                        real_images_resized,
-                        disc_outputs_real,
-                    ):
-                        #print(gen_output.shape)
-                        #print(real_image.shape)
-                        generator_losses += total_loss(
-                                gen_output,
-                                real_image,
-                                disc_output,
-                                disc_output_real,  # TODO: THIS line of discriminator(batch_real_imgages) IS AN ERROR. IT SHOULD BE THE BATCH OF RESIZED IMAGES
-                            )
-                        
-                        discriminator_losses += adversarial_loss(disc_output, disc_output_real, True)
-                        
-                        metrics = []
-                        for metric in self.metric_list:
-                            metrics += [
-                                metric(gen_output, real_image)
-                            ]  ## TODO: ADJUST params as needed
-                        metrics_2d += [metrics]
-                    metrics_2d = np.asarray(metrics_2d)
+                    gradients = disc_tape.gradient(discriminator_losses, self.trainable_variables)
+                    #print(gradients)
+                    self.optimizer.apply_gradients(
+                        zip(gradients, self.trainable_variables)
+                    )
 
-                gen_train_vars = []
-                for gen in self.generators:
-                    gen_train_vars += gen.trainable_variables
-                gradients = gen_tape.gradient(generator_losses, gen_train_vars)
-                #print(gradients)
-                self.gen_optimizer.apply_gradients(
-                    zip(gradients, gen_train_vars)
-                )
-
-                disc_train_vars = []
-                for disc in self.discriminators:
-                    disc_train_vars += disc.trainable_variables
-                gradients = disc_tape.gradient(discriminator_losses, disc_train_vars)
-
-                #print(gradients)
-                self.disc_optimizer.apply_gradients(
-                    zip(gradients, disc_train_vars)
-                )
-
-                avg_loss = float(generator_losses / batch_size)
-                avg_metrics = float(metrics_2d / batch_size)
-
-                print(f"\r[Epoch: {e} \t Batch Index: {index+1}/{num_batches}]\t batch_loss={avg_loss:.3f}\t batch_metrics: ",
-                    end="",)
-                
-                #print(avg_metrics)
-                
-                losses_np = np.append(losses_np, avg_loss)
-                #print("losses_np: " + str(losses_np))
-
-        print(losses_np)
-        print(epochs_np)
-        plt.plot(epochs_np.reshape(-1),losses_np)
-        plt.xlabel("epochs")
-        plt.ylabel("loss")
-        plt.show()
+                    avg_loss = float(generator_losses / batch_size)
+                    avg_metrics = metrics_2d / batch_size
+                    # self.tester(gen_outputs)
+                    print(f"\r[Epoch: {e} \t Batch Index: {index+1}/{num_batches}]\t batch_loss={avg_loss:.3f}\t batch_metrics: ",
+                        end="",)
+                    #print(avg_metrics)
+                    final_out = gen_output
+            if final_out != None:
+                self.visualize_generated_images(final_out)
         return avg_loss, avg_metrics
 
     def test(self, real_images, sketch_images):

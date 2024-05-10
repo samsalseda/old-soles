@@ -28,10 +28,10 @@ class LoadMyDataset(tf.keras.utils.Sequence):
 
         if train:
             self.transform = self.preprocess_train_image
-            self.num_images = 100
+            self.num_images = 5000
         else:
             self.transform = self.preprocess_test_image
-            self.num_images = 100
+            self.num_images = 25
 
     def preprocess_train_image(self, input_image, target_image, im_size):
         # Apply random resized crop augmentation
@@ -86,16 +86,16 @@ if __name__ == "__main__":
     random.shuffle(train_dataset.input_list)
 
 
-    # Loading the first 35,000 images for training
-    input_images_train, target_images_train = [], []
-    for i in tqdm(range(0, 99), desc="Loading Training Images"):
-        try:
-            input_image, target_image = train_dataset[i]
-            input_images_train.append(input_image)
-            target_images_train.append(target_image)
-        except Exception as e:
-            print(f"Failed to load images for file: {train_dataset.load_name(i)}")
-            print(f"Error: {e}")
+# Loading the first 35,000 images for training
+input_images_train, target_images_train = [], []
+for i in tqdm(range(0, 1000), desc="Loading Training Images"):
+    try:
+        input_image, target_image = train_dataset[i]
+        input_images_train.append(input_image)
+        target_images_train.append(target_image)
+    except Exception as e:
+        print(f"Failed to load images for file: {train_dataset.load_name(i)}")
+        print(f"Error: {e}")
 
     # Stack the input and target images into tensors for training
     input_images_train = tf.stack(input_images_train)
@@ -111,16 +111,17 @@ if __name__ == "__main__":
 
 
 
-    # Loading the next 15,000 images for testing
-    input_images_test, target_images_test = [], []
-    for i in tqdm(range(100, 199), desc="Loading Testing Images"):
-        try:
-            input_image, target_image = test_dataset[i]
-            input_images_test.append(input_image)
-            target_images_test.append(target_image)
-        except Exception as e:
-            print(f"Failed to load images for file: {test_dataset.load_name(i)}")
-            print(f"Error: {e}")
+
+# Loading the next 15,000 images for testing
+input_images_test, target_images_test = [], []
+for i in tqdm(range(15000, 15024), desc="Loading Testing Images"):
+    try:
+        input_image, target_image = test_dataset[i]
+        input_images_test.append(input_image)
+        target_images_test.append(target_image)
+    except Exception as e:
+        print(f"Failed to load images for file: {test_dataset.load_name(i)}")
+        print(f"Error: {e}")
 
 
 
