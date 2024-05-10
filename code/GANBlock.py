@@ -137,4 +137,4 @@ class Generator(tf.keras.layers.Layer):
         :param inputs: inputs to the layer
         :return: output from the layer
         """
-        return self.MFFE(inputs)
+        return self.MFFE(tf.random.normal(tf.cast(tf.squeeze(inputs), "int64")))
