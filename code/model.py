@@ -43,6 +43,10 @@ def parse_args(args=None):
 
 
 def main(args):
+    """
+    Loads sketches and real images from local files. Adds GAN blocks according to number specified
+    in args. Creates, trains and then tests ShoeGeneration model.
+    """
     # TODO: call prorocessing, build the model
     # TODO: train using the preprocessed image stuff
     # TODO: test using the preprocessed image stuff
@@ -93,8 +97,14 @@ def main(args):
 
 @register_keras_serializable()
 class ShoeGenerationModel(tf.keras.Model):
-
+    """
+    Full HAIFIT model. Consists of a Progressive Growth GAN network, which itself is made up of
+    MFFE-based Generators and a convolutional Discriminators. 
+    """
     def __init__(self, generators, discriminators, **kwargs):
+        """
+        Initializes the generators, discriminators, optimizers and metrics for the model. 
+        """
         super().__init__(**kwargs)
         self.generators, self.discriminators = generators, discriminators
         self.gen_optimizer = tf.keras.optimizers.Adam(0.00005)
@@ -103,6 +113,10 @@ class ShoeGenerationModel(tf.keras.Model):
         # TODO: convert parameters to lists, for multile GAN blocks to iterate thorugh
 
     def production(self):
+        """
+        Tests the model on a set of images. To be called after training on a set of images the
+        model has not yet seen. 
+        """
         sketch_images = np.load("input_images_test.npy") / 255
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
             gen_outputs, disc_outputs, real_images_resized, disc_outputs_real = self.call(
@@ -115,6 +129,13 @@ class ShoeGenerationModel(tf.keras.Model):
     
     @tf.function
     def call(self, sketch_images, real_images, is_training=True):
+        """
+        The model's forward pass. Takes in a tensor of sketch images and passes them through the 
+        PGGAN network. Between each GAN layer, the output from the last layer is concatenated with 
+        the resized sketch image to create the next input. Also takes in a tensor of real images
+        and resizes them to match the progressively growing sketches, which is useful for calculating
+        the loss functions. 
+        """
         height, width = self.generators[0].height, self.generators[0].width
         input_images = tf.image.resize(sketch_images, [int(height), int(width)])
 
@@ -160,6 +181,9 @@ class ShoeGenerationModel(tf.keras.Model):
         return gen_outputs, disc_outputs, real_images_resized, disc_outputs_real
     
     def tester(self, gen_outputs):
+        """
+        Saves generated images from inputted gen_outputs tensor. 
+        """
         os.makedirs('generated_images', exist_ok=True)
         # Access gen_outputs[3] directly
         generated_image_list = gen_outputs[3]
@@ -188,6 +212,9 @@ class ShoeGenerationModel(tf.keras.Model):
 
 
     def visualize_generated_images(self, gen_outputs):
+        """
+        Visualizes generated images from inputted gen_outputs tensor.
+        """
         os.makedirs("resulting", exist_ok=True)
         for i in range(gen_outputs.shape[0]):
             # Normalize the image by scaling it to the range [0, 255]
@@ -290,7 +317,7 @@ class ShoeGenerationModel(tf.keras.Model):
 
     def test(self, real_images, sketch_images):
         """
-        Runs through all Epochs and trains
+        Runs through one Epoch and tests
         """
         avg_gen_loss = avg_disc_loss = 0
         avg_acc = 0
